@@ -344,13 +344,13 @@ return [
             ],
         ],
         [
-            'text' => 'Consultas Informacion',
+            'text' => 'Alquiler de Habitacion',
             'icon' => 'fas fa-users',
             // 'can'  => 'users.index',
             'submenu' => [
                 [
-                    'text' => 'Consulta Correspondencia',
-                    'url' => '',
+                    'text' => 'Vista alquiler',
+                    'url' => 'alquileres',
                     'icon' => 'fas fa-user',
                 ],
             ],
