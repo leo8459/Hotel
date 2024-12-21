@@ -7,6 +7,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleHasPermissionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AlquilerController;
+use App\Http\Controllers\HabitacionesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,6 +79,7 @@ Route::middleware('auth')->group(function () {
 
 
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
+    Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
 
 });
 

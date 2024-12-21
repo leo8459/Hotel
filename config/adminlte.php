@@ -353,6 +353,11 @@ return [
                     'url' => 'alquileres',
                     'icon' => 'fas fa-user',
                 ],
+                [
+                    'text' => 'Vista Habitaciones',
+                    'url' => 'habitaciones',
+                    'icon' => 'fas fa-user',
+                ],
             ],
         ],
         [
