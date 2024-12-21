@@ -1,9 +1,11 @@
 <?php
+
 namespace App\Livewire;
 
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Alquiler;
+use App\Models\Habitacion;
 
 class Alquileres extends Component
 {
@@ -11,25 +13,33 @@ class Alquileres extends Component
 
     public $searchTerm = '';
     public $perPage = 10;
-    public $tipoingreso, $tipopago, $aireacondicionado = false, $total = 0;
+    public $tipoingreso, $tipopago, $aireacondicionado = false, $total = 0, $entrada, $salida, $horas, $habitacion_id;
     public $selectedAlquilerId = null; // Para manejar edición
 
-    public $showCreateModal = false; // Controla el modal de creación
+    public $showCreateModal = false;
 
     public function render()
     {
-        $alquileres = Alquiler::where('tipoingreso', 'like', '%' . $this->searchTerm . '%')
+        $alquileres = Alquiler::with('habitacion') // Carga la relación
+            ->where('tipoingreso', 'like', '%' . $this->searchTerm . '%')
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage);
-
+    
+        $habitaciones = Habitacion::all();
+    
         return view('livewire.alquileres', [
             'alquileres' => $alquileres,
+            'habitaciones' => $habitaciones,
         ]);
     }
+    
 
     public function openCreateModal()
     {
-        $this->reset(['tipoingreso', 'tipopago', 'aireacondicionado', 'total']);
+        $this->reset([
+            'tipoingreso', 'tipopago', 'aireacondicionado', 'total', 
+            'entrada', 'salida', 'horas', 'habitacion_id'
+        ]);
         $this->dispatch('show-create-modal');
     }
 
@@ -38,39 +48,34 @@ class Alquileres extends Component
         $this->dispatch('close-modal');
     }
 
-    public function updatedAireacondicionado($value)
-    {
-        // Si aire acondicionado está activado, agregar 35 al total
-        if ($value) {
-            $this->total += 35;
-        } else {
-            // Si se desactiva, restar 35 del total
-            $this->total -= 35;
-        }
-    }
-
     public function store()
     {
         $this->validate([
             'tipoingreso' => 'required|string|max:255',
             'tipopago' => 'required|string|max:255',
             'aireacondicionado' => 'required|boolean',
+            'entrada' => 'required|date',
+            'salida' => 'required|date|after_or_equal:entrada',
+            'habitacion_id' => 'required|exists:habitaciones,id',
             'total' => 'required|numeric|min:0',
         ]);
+
+        $this->horas = round((strtotime($this->salida) - strtotime($this->entrada)) / 3600);
 
         Alquiler::create([
             'tipoingreso' => $this->tipoingreso,
             'tipopago' => $this->tipopago,
             'aireacondicionado' => $this->aireacondicionado,
+            'entrada' => $this->entrada,
+            'salida' => $this->salida,
+            'horas' => $this->horas,
+            'habitacion_id' => $this->habitacion_id,
             'total' => $this->total,
         ]);
 
         session()->flash('message', 'Alquiler creado exitosamente.');
 
-        // Cerrar el modal
         $this->closeCreateModal();
-
-        // Reiniciar la paginación y recargar la lista
         $this->resetPage();
     }
 }

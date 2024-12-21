@@ -11,7 +11,8 @@ class Habitacion extends Model
 
     protected $table = 'habitaciones'; // Nombre de la tabla
 
-    protected $fillable = ['habitacion', 'tipo', 'entrada', 'salida', 'horas']; // Campos que se pueden asignar masivamente
+    // Campos que se pueden asignar masivamente
+    protected $fillable = ['habitacion', 'tipo'];
 
     /**
      * Relación con el modelo Alquiler.
@@ -20,4 +21,5 @@ class Habitacion extends Model
     public function alquileres()
     {
         return $this->hasMany(Alquiler::class, 'habitacion_id');
-    }}
+    }
+}

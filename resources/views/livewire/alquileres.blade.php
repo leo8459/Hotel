@@ -39,6 +39,10 @@
                                                 <th>Tipo Ingreso</th>
                                                 <th>Tipo Pago</th>
                                                 <th>Aire Acondicionado</th>
+                                                <th>Habitacion</th>
+                                                <th>Entrada</th>
+                                                <th>Salida</th>
+                                                <th>Horas</th>
                                                 <th>Total</th>
                                                 <th>Acciones</th>
                                             </tr>
@@ -50,6 +54,12 @@
                                                     <td>{{ $alquiler->tipoingreso }}</td>
                                                     <td>{{ $alquiler->tipopago }}</td>
                                                     <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
+                                                    <td>{{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}</td>
+
+                                                    <td>{{ $alquiler->entrada }}</td>
+<td>{{ $alquiler->salida }}</td>
+<td>{{ $alquiler->horas }}</td>
+
                                                     <td>{{ $alquiler->total }}</td>
                                                     <td>
                                                         <button class="btn btn-info btn-sm">Editar</button>
@@ -91,11 +101,28 @@
                                     <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
                                     <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado">
                                 </div>
+                                
                                 <div class="mb-3">
+    <label for="entrada" class="form-label">Entrada</label>
+    <input type="datetime-local" class="form-control" id="entrada" wire:model="entrada">
+</div>
+<div class="mb-3">
+    <label for="salida" class="form-label">Salida</label>
+    <input type="datetime-local" class="form-control" id="salida" wire:model="salida">
+</div>
+<div class="mb-3">
+    <label for="habitacion_id" class="form-label">Habitación</label>
+    <select class="form-control" id="habitacion_id" wire:model="habitacion_id">
+        <option value="">Seleccione una habitación</option>
+        @foreach($habitaciones as $habitacion)
+            <option value="{{ $habitacion->id }}">{{ $habitacion->habitacion }}</option>
+        @endforeach
+    </select>
+</div>
+<div class="mb-3">
                                     <label for="total" class="form-label">Total</label>
                                     <input type="number" class="form-control" id="total" wire:model="total" readonly>
                                 </div>
-                                
                             </form>
                         </div>
                         <div class="modal-footer">

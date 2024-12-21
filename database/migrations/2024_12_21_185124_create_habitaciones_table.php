@@ -15,9 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('habitacion'); // Nombre o identificador de la habitación
             $table->string('tipo'); // Tipo de la habitación
-            $table->timestamp('entrada')->nullable(); // Fecha y hora de entrada
-            $table->timestamp('salida')->nullable(); // Fecha y hora de salida
-            $table->integer('horas')->nullable(); // Duración en horas
+           
             $table->timestamps(); // created_at y updated_at
         });
     }
