@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('habitacion'); // Nombre o identificador de la habitación
             $table->string('tipo'); // Tipo de la habitación
-           
+            $table->boolean('estado')->default(1); // Estado de la habitación, por defecto 1
+
             $table->timestamps(); // created_at y updated_at
         });
     }

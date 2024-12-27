@@ -20,6 +20,8 @@ return new class extends Migration
             $table->timestamp('salida')->nullable(); // Fecha y hora de salida
             $table->integer('horas')->nullable(); // Duración en horas
             $table->decimal('total', 10, 2);   // Campo total, decimal con 10 dígitos de los cuales 2 son decimales
+            $table->string('estado', 20)->default('alquilado'); // Campo estado, texto con límite de 20 caracteres, por defecto 'alquilado'
+
             $table->timestamps();
 
 

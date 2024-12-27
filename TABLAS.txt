@@ -1,0 +1,8 @@
+php artisan migrate --path=database/migrations/2024_12_20_194444_create_alquiler_table.php
+
+
+php artisan migrate:rollback --path=database/migrations/2024_12_21_185124_create_habitaciones_table.php
+
+
+
+php artisan migrate --path=database/migrations/2024_12_21_185124_create_habitaciones_table.php

@@ -13,14 +13,16 @@ class Alquiler extends Model
 
     // Campos que se pueden asignar masivamente
     protected $fillable = [
-        'tipoingreso', 
-        'tipopago', 
-        'aireacondicionado', 
-        'total', 
-        'entrada', 
-        'salida', 
-        'horas', 
-        'habitacion_id' // Agrega este campo
+        'tipoingreso',
+        'tipopago',
+        'aireacondicionado',
+        'entrada',
+        'salida',
+        'horas',
+        'total',
+        'habitacion_id',
+        'estado', // Agregado
+
     ];
 
     /**
