@@ -17,7 +17,8 @@ class Alquileres extends Component
     public $selectedAlquilerId = null; // Para manejar edición
     public $selectedAlquiler; // Alquiler seleccionado para el pago
     public $horaSalida; // Hora de salida para actualizar
-    
+    public $isPaying = false; // Define si el modal es para pagar
+
     public $showCreateModal = false;
 
     public function render()
@@ -41,20 +42,20 @@ class Alquileres extends Component
     
 
     public function openCreateModal()
-{
-    $this->reset([
-        'tipoingreso', 
-        'tipopago', 
-        'aireacondicionado', 
-        'total', 
-        'entrada', // Asegúrate de inicializar 'entrada'
-        'horas', 
-        'habitacion_id'
-    ]);
-
-    $this->entrada = now()->format('Y-m-d\TH:i'); // Hora actual
-    $this->dispatch('show-create-modal'); // Mostrar el modal
-}
+    {
+        $this->reset([
+            'tipoingreso', 
+            'tipopago', 
+            'aireacondicionado', 
+            'total', 
+            'entrada', 
+            'habitacion_id',
+            'horaSalida',
+        ]);
+        $this->entrada = now()->format('Y-m-d\TH:i'); // Hora actual
+        $this->isPaying = false; // Este modal no es para pagar
+        $this->dispatch('show-create-modal'); // Mostrar el modal de creación
+    }
 
 
     public function closeCreateModal()
@@ -64,14 +65,7 @@ class Alquileres extends Component
 
     public function store()
     {
-        $this->validate([
-            'tipoingreso' => 'required|string|in:A PIE,AUTOMOVIL,MOTO,OTRO',
-            'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA',
-            'aireacondicionado' => 'required|boolean',
-            'entrada' => 'required|date',
-            'habitacion_id' => 'required|exists:habitaciones,id',
-            'total' => 'required|numeric|min:0',
-        ]);
+        
     
         Alquiler::create([
             'tipoingreso' => $this->tipoingreso,
@@ -94,38 +88,45 @@ class Alquileres extends Component
     
     public function openPayModal($id)
     {
-        $this->selectedAlquiler = Alquiler::findOrFail($id);
-        $this->horaSalida = now()->format('Y-m-d\TH:i'); // Hora actual en formato datetime-local
-        $this->dispatch('show-pay-modal');
+        $this->selectedAlquiler = Alquiler::find($id);
+    
+        if (!$this->selectedAlquiler) {
+            session()->flash('error', 'El alquiler no existe.');
+            return;
+        }
+    
+        $this->horaSalida = now()->format('Y-m-d\TH:i'); // Inicializar la hora de salida con la hora actual
+        $this->isPaying = true; // Este modal es para pagar
+        $this->dispatch('show-pay-modal'); // Mostrar el modal de pago
     }
     
     public function pay()
     {
         $this->validate([
             'horaSalida' => 'required|date|after_or_equal:selectedAlquiler.entrada',
+            'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA', // Validar el tipo de pago
         ]);
     
-        // Calcular la diferencia en tiempo
         $entrada = strtotime($this->selectedAlquiler->entrada);
         $salida = strtotime($this->horaSalida);
         $diferenciaSegundos = $salida - $entrada;
     
-        // Convertir segundos a horas y minutos
         $horas = floor($diferenciaSegundos / 3600);
         $minutos = floor(($diferenciaSegundos % 3600) / 60);
     
-        // Actualizar el alquiler con la nueva hora de salida, horas calculadas y estado
         $this->selectedAlquiler->update([
             'salida' => $this->horaSalida,
-            'horas' => $horas, // Guardar las horas totales
-            'estado' => 'pagado', // Cambiar el estado a pagado
+            'horas' => $horas,
+            'estado' => 'pagado',
+            'tipopago' => $this->tipopago, // Guardar el tipo de pago
         ]);
     
         session()->flash('message', "Habitación pagada. Tiempo transcurrido: $horas horas y $minutos minutos.");
     
         $this->dispatch('close-modal');
-        $this->reset(['selectedAlquiler', 'horaSalida']);
+        $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago']);
     }
+    
     
     
 

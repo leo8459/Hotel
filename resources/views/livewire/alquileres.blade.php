@@ -105,6 +105,19 @@
                         <label for="horaSalida" class="form-label">Hora de Salida</label>
                         <input type="datetime-local" class="form-control" id="horaSalida" wire:model="horaSalida" readonly>
                     </div>
+                    @if ($isPaying)
+    <div class="mb-3">
+        <label for="tipopago" class="form-label">Tipo Pago</label>
+        <select class="form-control" id="tipopago" wire:model="tipopago">
+            <option value="">Seleccione el tipo de pago</option>
+            <option value="EFECTIVO">EFECTIVO</option>
+            <option value="QR">QR</option>
+            <option value="TARJETA">TARJETA</option>
+        </select>
+        @error('tipopago') <span class="text-danger">{{ $message }}</span> @enderror
+    </div>
+@endif
+
                     <div class="mb-3">
                         <label for="tiempoTranscurrido" class="form-label">Tiempo Transcurrido</label>
                         <input type="text" 
@@ -150,16 +163,7 @@
                         @error('tipoingreso') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="tipopago" class="form-label">Tipo Pago</label>
-                        <select class="form-control" id="tipopago" wire:model="tipopago">
-                            <option value="">Seleccione el tipo de pago</option>
-                            <option value="EFECTIVO">EFECTIVO</option>
-                            <option value="QR">QR</option>
-                            <option value="TARJETA">TARJETA</option>
-                        </select>
-                        @error('tipopago') <span class="text-danger">{{ $message }}</span> @enderror
-                    </div>
+                  
                     
                     <div class="mb-3">
                         <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
