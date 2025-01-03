@@ -358,6 +358,11 @@ return [
                     'url' => 'habitaciones',
                     'icon' => 'fas fa-user',
                 ],
+                [
+                    'text' => 'Vista Inventario',
+                    'url' => 'inventarios',
+                    'icon' => 'fas fa-user',
+                ],
             ],
         ],
         [

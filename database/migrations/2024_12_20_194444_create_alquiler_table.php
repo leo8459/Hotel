@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('alquiler', function (Blueprint $table) {
             $table->id();
-            $table->string('tipoingreso', 50); // Campo tipoingreso, texto con límite de 50 caracteres
-            $table->string('tipopago', 50);    // Campo tipopago, texto con límite de 50 caracteres
-            $table->boolean('aireacondicionado'); // Campo aireacondicionado, booleano
+            $table->string('tipoingreso', 50)->nullable(); // Campo tipoingreso, texto con límite de 50 caracteres
+            $table->string('tipopago', 50)->nullable();    // Campo tipopago, texto con límite de 50 caracteres
+            $table->boolean('aireacondicionado')->nullable(); // Campo aireacondicionado, booleano
             $table->timestamp('entrada')->nullable(); // Fecha y hora de entrada
             $table->timestamp('salida')->nullable(); // Fecha y hora de salida
             $table->integer('horas')->nullable(); // Duración en horas
-            $table->decimal('total', 10, 2);   // Campo total, decimal con 10 dígitos de los cuales 2 son decimales
+            $table->decimal('total', 10, 2)->nullable();   // Campo total, decimal con 10 dígitos de los cuales 2 son decimales
             $table->string('estado', 20)->default('alquilado'); // Campo estado, texto con límite de 20 caracteres, por defecto 'alquilado'
 
             $table->timestamps();
@@ -27,6 +27,8 @@ return new class extends Migration
 
 
             $table->foreignId('habitacion_id')->constrained('habitaciones')->onDelete('cascade'); // Relación con habitaciones
+            $table->foreignId('inventario_id')->nullable()->constrained('inventarios')->onDelete('cascade'); // Relación con inventarios, nullable
+
 
         });
     }

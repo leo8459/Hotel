@@ -9,9 +9,8 @@ class Alquiler extends Model
 {
     use HasFactory;
 
-    protected $table = 'alquiler'; // Nombre de la tabla
+    protected $table = 'alquiler'; // Nombre de la tabla en plural
 
-    // Campos que se pueden asignar masivamente
     protected $fillable = [
         'tipoingreso',
         'tipopago',
@@ -21,16 +20,19 @@ class Alquiler extends Model
         'horas',
         'total',
         'habitacion_id',
-        'estado', // Agregado
-
+        'inventario_id', // Agregado para la relación
+        'estado',
     ];
 
-    /**
-     * Relación con el modelo Habitacion.
-     * Un alquiler pertenece a una habitación.
-     */
+    // Relación con Habitacion
     public function habitacion()
     {
         return $this->belongsTo(Habitacion::class, 'habitacion_id');
+    }
+
+    // Relación con Inventario
+    public function inventario()
+    {
+        return $this->belongsTo(Inventario::class, 'inventario_id');
     }
 }

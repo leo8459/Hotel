@@ -8,6 +8,7 @@ use App\Http\Controllers\RoleHasPermissionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AlquilerController;
 use App\Http\Controllers\HabitacionesController;
+use App\Http\Controllers\InventarioController;
 
 /*
 |--------------------------------------------------------------------------
@@ -80,6 +81,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
+    Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
 
 });
 

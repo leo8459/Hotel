@@ -39,6 +39,7 @@
                                             <th>Tipo Pago</th>
                                             <th>Aire Acondicionado</th>
                                             <th>Habitación</th>
+                                            <th>Consumo</th>
                                             <th>Entrada</th>
                                             <th>Salida</th>
                                             <th>Horas</th>
@@ -56,6 +57,8 @@
                                                 <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
                                                 <td>{{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}
                                                 </td>
+                                                <td>{{ $alquiler->inventario ? $alquiler->inventario->articulo : 'Sin asignar' }}</td>
+
                                                 <td>{{ $alquiler->entrada }}</td>
                                                 <td>{{ $alquiler->salida }}</td>
                                                 <td>
@@ -183,7 +186,39 @@
                         </select>
                         @error('habitacion_id') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
-                    
+                    <div class="mb-3">
+    <label for="inventarios" class="form-label">Inventarios</label>
+    @foreach ($inventarios as $index => $inventario)
+        <div class="d-flex align-items-center mb-2">
+            <!-- Checkbox para seleccionar el inventario -->
+            <input 
+                type="checkbox" 
+                id="inventario_{{ $inventario->id }}" 
+                wire:click="toggleInventario({{ $inventario->id }}, {{ $index }})"
+                class="form-check-input me-2">
+            
+            <label for="inventario_{{ $inventario->id }}" class="form-label me-3">
+                {{ $inventario->articulo }} (Stock: {{ $inventario->stock }})
+            </label>
+
+            <!-- Campo de cantidad -->
+            <input 
+                type="number" 
+                wire:model="selectedInventarios.{{ $inventario->id }}.cantidad"
+                placeholder="Cantidad"
+                min="1"
+                max="{{ $inventario->stock }}"
+                class="form-control"
+                style="width: 100px;"
+                {{ !isset($selectedInventarios[$inventario->id]) ? 'disabled' : '' }}>
+        </div>
+    @endforeach
+    @error('selectedInventarios.*.cantidad') <span class="text-danger">{{ $message }}</span> @enderror
+</div>
+
+
+
+
                     <div class="mb-3">
                         <label for="total" class="form-label">Total</label>
                         <input type="number" class="form-control" id="total" wire:model="total" readonly>
