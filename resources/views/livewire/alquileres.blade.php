@@ -32,55 +32,89 @@
                             </div>
                             <div class="card-body">
                                 <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Tipo Ingreso</th>
-                                            <th>Tipo Pago</th>
-                                            <th>Aire Acondicionado</th>
-                                            <th>Habitación</th>
-                                            <th>Consumo</th>
-                                            <th>Entrada</th>
-                                            <th>Salida</th>
-                                            <th>Horas</th>
-                                            <th>Total</th>
-                                            <th>Estado</th> <!-- Nueva columna -->
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($alquileres as $alquiler)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $alquiler->tipoingreso }}</td>
-                                                <td>{{ $alquiler->tipopago }}</td>
-                                                <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
-                                                <td>{{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}
-                                                </td>
-                                                <td>{{ $alquiler->inventario ? $alquiler->inventario->articulo : 'Sin asignar' }}</td>
+                                <thead>
+    <tr>
+        <th>#</th>
+        <th>Tipo Ingreso</th>
+        <th>Tipo Pago</th>
+        <th>Aire Acondicionado</th>
+        <th>Habitación</th>
+        <th>Consumo</th>
+        <th>Entrada</th>
+        <th>Salida</th>
+        <th>Horas</th>
+        <th>Tarifa Seleccionada</th> <!-- Nueva columna -->
+        <th>Total</th>
+        <th>Total</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+    </tr>
+</thead>
+<tbody>
+    @foreach ($alquileres as $alquiler)
+        <tr>
+            <td>{{ $loop->iteration }}</td>
+            <td>{{ $alquiler->tipoingreso }}</td>
+            <td>{{ $alquiler->tipopago }}</td>
+            <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
+            <td>{{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}</td>
+            <td>
+                @php
+                    $detalleInventario = json_decode($alquiler->inventario_detalle, true);
+                @endphp
+                @if (is_array($detalleInventario) && !empty($detalleInventario))
+                    <ul>
+                        @foreach ($detalleInventario as $item)
+                            @php
+                                $inventario = \App\Models\Inventario::find($item['id']);
+                            @endphp
+                            @if ($inventario)
+                                <li>{{ $inventario->articulo }}: {{ $item['cantidad'] }}</li>
+                            @endif
+                        @endforeach
+                    </ul>
+                @else
+                    Sin consumo registrado
+                @endif
+            </td>
+            <td>{{ $alquiler->entrada }}</td>
+            <td>{{ $alquiler->salida }}</td>
+            <td>{{ $alquiler->horas }} horas</td>
+            <td>{{ $alquiler->tarifa_seleccionada }}</td> <!-- Mostrar tarifa seleccionada -->
+            <td>{{ $alquiler->total }}</td>
+            <td>
+    @php
+        $detalleInventario = json_decode($alquiler->inventario_detalle, true);
+    @endphp
+    @if (is_array($detalleInventario) && !empty($detalleInventario))
+        <ul>
+            @foreach ($detalleInventario as $item)
+                @php
+                    $inventario = \App\Models\Inventario::find($item['id']);
+                @endphp
+                @if ($inventario)
+                    <li>{{ $inventario->articulo }}: {{ $item['cantidad'] }} (Total: {{ $inventario->precio * $item['cantidad'] }})</li>
+                @endif
+            @endforeach
+        </ul>
+    @else
+        Sin consumo registrado
+    @endif
+</td>
 
-                                                <td>{{ $alquiler->entrada }}</td>
-                                                <td>{{ $alquiler->salida }}</td>
-                                                <td>
-                                                    {{ $alquiler->horas }} horas 
-                                                    @if($alquiler->horas > 0 || $alquiler->minutos > 0)
-                                                        y {{ floor((strtotime($alquiler->salida) - strtotime($alquiler->entrada)) % 3600 / 60) }} minutos
-                                                    @endif
-                                                </td>
-                                                                                                <td>{{ $alquiler->total }}</td>
-                                                <td>
-                                                    <span class="badge {{ $alquiler->estado == 'pagado' ? 'bg-success' : 'bg-warning' }}">
-                                                        {{ ucfirst($alquiler->estado) }}
-                                                    </span>
-                                                </td>
-                                                                                                <td>
-                                                    <button class="btn btn-primary btn-sm" wire:click="openPayModal({{ $alquiler->id }})">Pagar Habitación</button>
-                                                    <button class="btn btn-info btn-sm">Editar</button>
-                                                    <button class="btn btn-danger btn-sm">Eliminar</button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
+            <td>
+                <span class="badge {{ $alquiler->estado == 'pagado' ? 'bg-success' : 'bg-warning' }}">
+                    {{ ucfirst($alquiler->estado) }}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-primary btn-sm" wire:click="openPayModal({{ $alquiler->id }})">Pagar Habitación</button>
+                <button class="btn btn-info btn-sm">Editar</button>
+                <button class="btn btn-danger btn-sm">Eliminar</button>
+            </td>
+        </tr>
+    @endforeach
+</tbody>
 
                                 </table>
                                 <div class="mt-3">
@@ -108,18 +142,59 @@
                         <label for="horaSalida" class="form-label">Hora de Salida</label>
                         <input type="datetime-local" class="form-control" id="horaSalida" wire:model="horaSalida" readonly>
                     </div>
-                    @if ($isPaying)
-    <div class="mb-3">
-        <label for="tipopago" class="form-label">Tipo Pago</label>
-        <select class="form-control" id="tipopago" wire:model="tipopago">
-            <option value="">Seleccione el tipo de pago</option>
-            <option value="EFECTIVO">EFECTIVO</option>
-            <option value="QR">QR</option>
-            <option value="TARJETA">TARJETA</option>
-        </select>
-        @error('tipopago') <span class="text-danger">{{ $message }}</span> @enderror
-    </div>
-@endif
+
+                    <div class="mb-3">
+                        <label for="tipopago" class="form-label">Tipo Pago</label>
+                        <select class="form-control" id="tipopago" wire:model="tipopago">
+                            <option value="">Seleccione el tipo de pago</option>
+                            <option value="EFECTIVO">EFECTIVO</option>
+                            <option value="QR">QR</option>
+                            <option value="TARJETA">TARJETA</option>
+                        </select>
+                        @error('tipopago') <span class="text-danger">{{ $message }}</span> @enderror
+                    </div>
+
+                    <!-- Selección de inventarios consumidos -->
+                    <div class="mb-3">
+                        <label for="inventarios" class="form-label">Inventarios Consumidos</label>
+                        @foreach ($inventarios as $index => $inventario)
+                            <div class="d-flex align-items-center mb-2">
+                                <!-- Checkbox para seleccionar el inventario -->
+                                <input 
+                                    type="checkbox" 
+                                    id="inventario_{{ $inventario->id }}" 
+                                    wire:click="toggleInventario({{ $inventario->id }}, {{ $index }})"
+                                    class="form-check-input me-2">
+                                
+                                <label for="inventario_{{ $inventario->id }}" class="form-label me-3">
+                                    {{ $inventario->articulo }} (Stock: {{ $inventario->stock }})
+                                </label>
+
+                                <!-- Campo de cantidad -->
+                                <input 
+                                    type="number" 
+                                    wire:model="selectedInventarios.{{ $inventario->id }}.cantidad"
+                                    placeholder="Cantidad"
+                                    min="1"
+                                    max="{{ $inventario->stock }}"
+                                    class="form-control"
+                                    style="width: 100px;"
+                                    {{ !isset($selectedInventarios[$inventario->id]) ? 'disabled' : '' }}>
+                            </div>
+                        @endforeach
+                        @error('selectedInventarios.*.cantidad') <span class="text-danger">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="mb-3">
+    <label for="tarifaSeleccionada" class="form-label">Seleccione Tarifa</label>
+    <select class="form-control" id="tarifaSeleccionada" wire:model="tarifaSeleccionada">
+        <option value="">Seleccione una tarifa</option>
+        <option value="tarifa_opcion1">Tarifa Opción 1: {{ $selectedAlquiler->habitacion->tarifa_opcion1 ?? 'N/A' }}</option>
+        <option value="tarifa_opcion2">Tarifa Opción 2: {{ $selectedAlquiler->habitacion->tarifa_opcion2 ?? 'N/A' }}</option>
+        <option value="tarifa_opcion3">Tarifa Opción 3: {{ $selectedAlquiler->habitacion->tarifa_opcion3 ?? 'N/A' }}</option>
+        <option value="tarifa_opcion4">Tarifa Opción 4: {{ $selectedAlquiler->habitacion->tarifa_opcion4 ?? 'N/A' }}</option>
+    </select>
+    @error('tarifaSeleccionada') <span class="text-danger">{{ $message }}</span> @enderror
+</div>
 
                     <div class="mb-3">
                         <label for="tiempoTranscurrido" class="form-label">Tiempo Transcurrido</label>
@@ -132,8 +207,6 @@
                                         floor(((strtotime($horaSalida) - strtotime($selectedAlquiler->entrada)) % 3600) / 60) . ' minutos' 
                                         : 'N/A' }}">
                     </div>
-                    
-                    
                 </form>
             </div>
             <div class="modal-footer">
@@ -143,6 +216,7 @@
         </div>
     </div>
 </div>
+
 
        <!-- Modal Crear Alquiler -->
 <div wire:ignore.self class="modal fade" id="createAlquilerModal" tabindex="-1" aria-labelledby="createAlquilerModalLabel" aria-hidden="true">
@@ -174,7 +248,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="entrada" class="form-label">Hora de Entrada</label>
-                        <input type="datetime-local" class="form-control" id="entrada" wire:model="entrada" readonly>
+                        <input type="datetime-local" class="form-control" id="entrada" wire:model="entrada" >
                     </div>
                     <div class="mb-3">
                         <label for="habitacion_id" class="form-label">Habitación</label>
@@ -186,35 +260,7 @@
                         </select>
                         @error('habitacion_id') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
-                    <div class="mb-3">
-    <label for="inventarios" class="form-label">Inventarios</label>
-    @foreach ($inventarios as $index => $inventario)
-        <div class="d-flex align-items-center mb-2">
-            <!-- Checkbox para seleccionar el inventario -->
-            <input 
-                type="checkbox" 
-                id="inventario_{{ $inventario->id }}" 
-                wire:click="toggleInventario({{ $inventario->id }}, {{ $index }})"
-                class="form-check-input me-2">
-            
-            <label for="inventario_{{ $inventario->id }}" class="form-label me-3">
-                {{ $inventario->articulo }} (Stock: {{ $inventario->stock }})
-            </label>
-
-            <!-- Campo de cantidad -->
-            <input 
-                type="number" 
-                wire:model="selectedInventarios.{{ $inventario->id }}.cantidad"
-                placeholder="Cantidad"
-                min="1"
-                max="{{ $inventario->stock }}"
-                class="form-control"
-                style="width: 100px;"
-                {{ !isset($selectedInventarios[$inventario->id]) ? 'disabled' : '' }}>
-        </div>
-    @endforeach
-    @error('selectedInventarios.*.cantidad') <span class="text-danger">{{ $message }}</span> @enderror
-</div>
+             
 
 
 
@@ -251,26 +297,29 @@
 
         let intervalId;
 
-    window.addEventListener('show-pay-modal', () => {
-        const horaSalidaInput = document.getElementById('horaSalida');
+        window.addEventListener('show-pay-modal', () => {
+    const horaSalidaInput = document.getElementById('horaSalida');
 
-        // Función para actualizar el tiempo automáticamente
-        function updateHoraSalida() {
-            const now = new Date();
-            const formattedDateTime = now.toISOString().slice(0, 16); // Formato para datetime-local
-            horaSalidaInput.value = formattedDateTime;
-            @this.set('horaSalida', formattedDateTime); // Actualizar el valor en Livewire
-        }
+    // Función para actualizar el tiempo automáticamente en la zona horaria de La Paz
+    function updateHoraSalida() {
+        const now = new Date();
+        const utcOffset = -4 * 60 * 60 * 1000; // UTC -4:00 para La Paz
+        const localTime = new Date(now.getTime() + utcOffset);
+        const formattedDateTime = localTime.toISOString().slice(0, 16); // Formato para datetime-local
+        horaSalidaInput.value = formattedDateTime;
+        @this.set('horaSalida', formattedDateTime); // Actualizar el valor en Livewire
+    }
 
-        // Inicia el intervalo para actualizar cada segundo
-        updateHoraSalida();
-        intervalId = setInterval(updateHoraSalida, 1000);
+    // Inicia el intervalo para actualizar cada segundo
+    updateHoraSalida();
+    intervalId = setInterval(updateHoraSalida, 1000);
 
-        // Mostrar el modal
-        let modalEl = document.getElementById('payAlquilerModal');
-        let modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    });
+    // Mostrar el modal
+    let modalEl = document.getElementById('payAlquilerModal');
+    let modal = new bootstrap.Modal(modalEl);
+    modal.show();
+});
+
 
     window.addEventListener('close-modal', () => {
         // Detiene el intervalo cuando se cierra el modal

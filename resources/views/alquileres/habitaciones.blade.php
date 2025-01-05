@@ -8,3 +8,6 @@
 @livewire('habitaciones')
 @include('footer')
 @endsection
+
+
+

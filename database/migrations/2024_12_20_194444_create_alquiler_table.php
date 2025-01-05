@@ -21,6 +21,8 @@ return new class extends Migration
             $table->integer('horas')->nullable(); // Duración en horas
             $table->decimal('total', 10, 2)->nullable();   // Campo total, decimal con 10 dígitos de los cuales 2 son decimales
             $table->string('estado', 20)->default('alquilado'); // Campo estado, texto con límite de 20 caracteres, por defecto 'alquilado'
+            $table->text('inventario_detalle')->nullable(); // Detalle del inventario consumido
+            $table->string('tarifa_seleccionada')->nullable();
 
             $table->timestamps();
 

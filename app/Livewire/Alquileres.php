@@ -7,6 +7,7 @@ use Livewire\WithPagination;
 use App\Models\Alquiler;
 use App\Models\Habitacion;
 use App\Models\Inventario;
+use Carbon\Carbon;
 
 class Alquileres extends Component
 {
@@ -22,29 +23,36 @@ class Alquileres extends Component
     public $isPaying = false; // Define si el modal es para pagar
     public $inventarios = []; // Lista de inventarios disponibles
     public $selectedInventarios = []; // Para manejar inventarios seleccionados y cantidades
+    public $tarifaSeleccionada; // Para almacenar la tarifa seleccionada al momento del pago
 
     public $showCreateModal = false;
 
     // Renderiza la vista y carga datos necesarios
     public function render()
-    {
-        $alquileres = Alquiler::with(['habitacion', 'inventario'])
-            ->where('tipoingreso', 'like', '%' . $this->searchTerm . '%')
-            ->orderBy('created_at', 'desc')
-            ->paginate($this->perPage);
+{
+    // Obtener los alquileres ordenados por fecha de entrada, del más reciente al más antiguo
+    $alquileres = Alquiler::with(['habitacion', 'inventario'])
+        ->where('tipoingreso', 'like', '%' . $this->searchTerm . '%')
+        ->orderBy('entrada', 'desc') // Ordenar por fecha de entrada (descendente)
+        ->paginate($this->perPage);
 
-        $habitaciones = Habitacion::whereDoesntHave('alquileres', function ($query) {
-            $query->where('estado', 'alquilado');
-        })->get();
+    // Habitaciones disponibles
+    $habitaciones = Habitacion::whereDoesntHave('alquileres', function ($query) {
+        $query->where('estado', 'alquilado');
+    })->get();
 
-        $this->inventarios = Inventario::where('stock', '>', 0)->get();
+    // Inventarios disponibles
+    $this->inventarios = Inventario::where('stock', '>', 0)->get();
 
-        return view('livewire.alquileres', [
-            'alquileres' => $alquileres,
-            'habitaciones' => $habitaciones,
-            'inventarios' => $this->inventarios,
-        ]);
-    }
+    // Renderizar la vista con los datos
+    return view('livewire.alquileres', [
+        'alquileres' => $alquileres,
+        'habitaciones' => $habitaciones,
+        'inventarios' => $this->inventarios,
+    ]);
+}
+
+    
 
     // Abrir el modal de creación
     public function openCreateModal()
@@ -91,18 +99,6 @@ class Alquileres extends Component
             return isset($item['cantidad']) && $item['cantidad'] > 0;
         });
 
-        $this->validate([
-            'tipoingreso' => 'required|string|max:50',
-            'tipopago' => 'nullable|string|max:50',
-            'aireacondicionado' => 'boolean',
-            'entrada' => 'required|date',
-            'habitacion_id' => 'required|exists:habitaciones,id',
-            'selectedInventarios' => 'required|array|min:1',
-            'selectedInventarios.*.id' => 'required|exists:inventarios,id',
-            'selectedInventarios.*.cantidad' => 'required|integer|min:1',
-        ]);
-
-        // Validar stock y descontar
         foreach ($this->selectedInventarios as $item) {
             $inventario = Inventario::find($item['id']);
             if ($inventario->stock < $item['cantidad']) {
@@ -119,7 +115,7 @@ class Alquileres extends Component
             'salida' => null,
             'horas' => 0,
             'habitacion_id' => $this->habitacion_id,
-            'inventario_detalle' => json_encode($this->selectedInventarios),
+            'inventario_detalle' => json_encode($this->selectedInventarios), // Guardar como JSON
             'total' => $this->total,
             'estado' => 'alquilado',
         ]);
@@ -132,8 +128,12 @@ class Alquileres extends Component
         session()->flash('message', 'Alquiler creado exitosamente.');
         $this->reset(['tipoingreso', 'tipopago', 'aireacondicionado', 'entrada', 'habitacion_id', 'selectedInventarios', 'total']);
         $this->dispatch('close-modal');
-        $this->resetPage();
+        $this->resetPage(); // Resetear la página para recargar datos
+
+        // Refrescar la página
+        return redirect()->to(request()->header('Referer')); 
     }
+
     
     
 
@@ -141,42 +141,98 @@ class Alquileres extends Component
     public function openPayModal($id)
     {
         $this->selectedAlquiler = Alquiler::find($id);
-
+    
         if (!$this->selectedAlquiler) {
             session()->flash('error', 'El alquiler no existe.');
             return;
         }
-
-        $this->horaSalida = now()->format('Y-m-d\TH:i'); // Inicializar la hora de salida
+    
+        // Establecer la hora de salida en la zona horaria de La Paz
+        $this->horaSalida = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i'); // Formato compatible con datetime-local
+        $this->tarifaSeleccionada = null; // Inicializar tarifa seleccionada
         $this->isPaying = true; // Este modal es para pagar
         $this->dispatch('show-pay-modal'); // Mostrar el modal de pago
     }
+    
 
     // Método para realizar el pago
     public function pay()
-    {
-        $this->validate([
-            'horaSalida' => 'required|date|after_or_equal:selectedAlquiler.entrada',
-            'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA', // Validar el tipo de pago
-        ]);
+{
+    $this->validate([
+        'horaSalida' => 'required|date|after_or_equal:selectedAlquiler.entrada',
+        'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA', // Validar el tipo de pago
+        'tarifaSeleccionada' => 'required|string|in:tarifa_opcion1,tarifa_opcion2,tarifa_opcion3,tarifa_opcion4' // Validar la tarifa seleccionada
+    ]);
 
-        $entrada = strtotime($this->selectedAlquiler->entrada);
-        $salida = strtotime($this->horaSalida);
-        $diferenciaSegundos = $salida - $entrada;
+    // Convertir las fechas a Carbon en la zona horaria de La Paz
+    $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
+    $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
 
-        $horas = floor($diferenciaSegundos / 3600);
-        $minutos = floor(($diferenciaSegundos % 3600) / 60);
+    // Calcular la diferencia en horas y minutos
+    $diferenciaHoras = $entrada->diffInHours($salida);
+    $diferenciaMinutos = $entrada->diff($salida)->i;
 
-        $this->selectedAlquiler->update([
-            'salida' => $this->horaSalida,
-            'horas' => $horas,
-            'estado' => 'pagado',
-            'tipopago' => $this->tipopago,
-        ]);
+    // Obtener la habitación y la tarifa seleccionada
+    $habitacion = $this->selectedAlquiler->habitacion;
 
-        session()->flash('message', "Habitación pagada. Tiempo transcurrido: $horas horas y $minutos minutos.");
-
-        $this->dispatch('close-modal');
-        $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago']);
+    if (!$habitacion) {
+        session()->flash('error', 'No se encontró la habitación asociada.');
+        return;
     }
+
+    $precioTarifa = $habitacion->{$this->tarifaSeleccionada};
+
+    // Calcular el precio total basado en la duración
+    $precioTotal = $diferenciaHoras > 1
+        ? $precioTarifa + (($diferenciaHoras - 1) * $habitacion->precio_extra)
+        : $precioTarifa;
+
+    if ($diferenciaMinutos > 0) {
+        $precioTotal += $habitacion->precio_extra;
+    }
+
+    // Calcular el precio total del inventario seleccionado
+    $precioInventario = 0;
+
+    if (is_array($this->selectedInventarios) && !empty($this->selectedInventarios)) {
+        foreach ($this->selectedInventarios as $item) {
+            $inventario = Inventario::find($item['id']);
+            if ($inventario) {
+                $precioInventario += $inventario->precio * $item['cantidad']; // Calcular precio total del inventario
+                if ($inventario->stock >= $item['cantidad']) {
+                    $inventario->decrement('stock', $item['cantidad']); // Reducir el stock
+                } else {
+                    session()->flash('error', "El inventario '{$inventario->articulo}' no tiene suficiente stock para completar el pago.");
+                    return;
+                }
+            }
+        }
+    }
+
+    // Sumar el precio del inventario al total
+    $precioTotal += $precioInventario;
+
+    // Actualizar el alquiler con los datos calculados
+    $this->selectedAlquiler->update([
+        'salida' => $this->horaSalida,
+        'horas' => $diferenciaHoras,
+        'estado' => 'pagado',
+        'tipopago' => $this->tipopago,
+        'total' => $precioTotal,
+        'tarifa_seleccionada' => $this->tarifaSeleccionada,
+        'inventario_detalle' => json_encode($this->selectedInventarios), // Guardar detalle actualizado
+    ]);
+
+    session()->flash('message', "Habitación pagada. Total a pagar: $precioTotal, incluyendo inventario por $precioInventario.");
+
+    $this->dispatch('close-modal');
+    $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios']);
+    $this->resetPage();
+}
+
+    
+
+    
+    
+    
 }

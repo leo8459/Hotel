@@ -12,28 +12,29 @@ class Habitaciones extends Component
 
     public $searchTerm = '';
     public $perPage = 10;
-    public $habitacion, $tipo, $entrada, $salida, $horas;
+    public $habitacion, $tipo, $preciohora, $precio_extra, $tarifa_opcion1, $tarifa_opcion2, $tarifa_opcion3, $tarifa_opcion4;
     public $selectedHabitacionId = null; // Para manejar edición
-    public $selectedAlquilerId;
-    
     public $showCreateModal = false; // Controla el modal de creación
 
     protected $rules = [
         'habitacion' => 'required|string|max:255',
         'tipo' => 'required|string|max:255',
-        'entrada' => 'nullable|date',
-        'salida' => 'nullable|date|after_or_equal:entrada',
-        'horas' => 'nullable|integer|min:0',
+        'preciohora' => 'nullable|integer|min:0',
+        'precio_extra' => 'nullable|integer|min:0',
+        'tarifa_opcion1' => 'nullable|integer|min:0',
+        'tarifa_opcion2' => 'nullable|integer|min:0',
+        'tarifa_opcion3' => 'nullable|integer|min:0',
+        'tarifa_opcion4' => 'nullable|integer|min:0',
     ];
 
     public function render()
     {
-        $alquileres = Habitacion::where('habitacion', 'like', '%' . $this->searchTerm . '%')
+        $habitaciones = Habitacion::where('habitacion', 'like', '%' . $this->searchTerm . '%')
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage);
 
         return view('livewire.habitaciones', [
-            'alquileres' => $alquileres,
+            'habitaciones' => $habitaciones,
         ]);
     }
 
@@ -51,7 +52,12 @@ class Habitaciones extends Component
         Habitacion::create([
             'habitacion' => $this->habitacion,
             'tipo' => $this->tipo,
-            
+            'preciohora' => $this->preciohora,
+            'precio_extra' => $this->precio_extra,
+            'tarifa_opcion1' => $this->tarifa_opcion1,
+            'tarifa_opcion2' => $this->tarifa_opcion2,
+            'tarifa_opcion3' => $this->tarifa_opcion3,
+            'tarifa_opcion4' => $this->tarifa_opcion4,
         ]);
 
         session()->flash('message', 'Habitación creada con éxito.');
@@ -64,63 +70,74 @@ class Habitaciones extends Component
     {
         $this->habitacion = '';
         $this->tipo = '';
-        $this->entrada = null;
-        $this->salida = null;
-        $this->horas = null;
+        $this->preciohora = null;
+        $this->precio_extra = null;
+        $this->tarifa_opcion1 = null;
+        $this->tarifa_opcion2 = null;
+        $this->tarifa_opcion3 = null;
+        $this->tarifa_opcion4 = null;
         $this->selectedHabitacionId = null;
     }
+
     public function update()
     {
-        $this->validate([
-            'habitacion' => 'required|string|max:255',
-            'tipo' => 'required|string|max:255',
-        ]);
-    
-        $alquiler = Habitacion::find($this->selectedAlquilerId);
-    
-        if ($alquiler) {
-            $alquiler->update([
+        $this->validate();
+
+        $habitacion = Habitacion::find($this->selectedHabitacionId);
+
+        if ($habitacion) {
+            $habitacion->update([
                 'habitacion' => $this->habitacion,
                 'tipo' => $this->tipo,
+                'preciohora' => $this->preciohora,
+                'precio_extra' => $this->precio_extra,
+                'tarifa_opcion1' => $this->tarifa_opcion1,
+                'tarifa_opcion2' => $this->tarifa_opcion2,
+                'tarifa_opcion3' => $this->tarifa_opcion3,
+                'tarifa_opcion4' => $this->tarifa_opcion4,
             ]);
-    
+
             session()->flash('message', 'Habitación actualizada con éxito.');
-    
+
             // Cierra el modal y limpia los campos
             $this->dispatch('close-modal');
             $this->resetInputFields();
         } else {
-            session()->flash('error', 'El alquiler no existe.');
+            session()->flash('error', 'La habitación no existe.');
         }
     }
-    
-public function openEditModal($id)
-{
-    $alquiler = Habitacion::find($id);
 
-    if ($alquiler) {
-        $this->selectedAlquilerId = $alquiler->id;
-        $this->habitacion = $alquiler->habitacion;
-        $this->tipo = $alquiler->tipo;
+    public function openEditModal($id)
+    {
+        $habitacion = Habitacion::find($id);
 
-        // Lanza el evento para mostrar el modal
-        $this->dispatch('show-edit-modal');
-    } else {
-        session()->flash('error', 'El alquiler no existe.');
+        if ($habitacion) {
+            $this->selectedHabitacionId = $habitacion->id;
+            $this->habitacion = $habitacion->habitacion;
+            $this->tipo = $habitacion->tipo;
+            $this->preciohora = $habitacion->preciohora;
+            $this->precio_extra = $habitacion->precio_extra;
+            $this->tarifa_opcion1 = $habitacion->tarifa_opcion1;
+            $this->tarifa_opcion2 = $habitacion->tarifa_opcion2;
+            $this->tarifa_opcion3 = $habitacion->tarifa_opcion3;
+            $this->tarifa_opcion4 = $habitacion->tarifa_opcion4;
+
+            // Lanza el evento para mostrar el modal
+            $this->dispatch('show-edit-modal');
+        } else {
+            session()->flash('error', 'La habitación no existe.');
+        }
     }
-}
 
+    public function delete($id)
+    {
+        $habitacion = Habitacion::find($id);
 
-public function delete($id)
-{
-    $alquiler = Habitacion::find($id);
-
-    if ($alquiler) {
-        $alquiler->delete();
-        session()->flash('message', 'Alquiler eliminado correctamente.');
-    } else {
-        session()->flash('error', 'El alquiler no existe.');
+        if ($habitacion) {
+            $habitacion->delete();
+            session()->flash('message', 'Habitación eliminada correctamente.');
+        } else {
+            session()->flash('error', 'La habitación no existe.');
+        }
     }
-}
-
 }

@@ -12,6 +12,12 @@ class Habitacion extends Model
     protected $fillable = [
         'habitacion',
         'tipo',
+        'preciohora',      // Nuevo campo
+        'precio_extra',    // Nuevo campo
+        'tarifa_opcion1',  // Nuevo campo
+        'tarifa_opcion2',  // Nuevo campo
+        'tarifa_opcion3',  // Nuevo campo
+        'tarifa_opcion4',  // Nuevo campo
         'estado',
     ];
 

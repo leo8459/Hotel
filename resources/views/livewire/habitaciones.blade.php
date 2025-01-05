@@ -4,11 +4,11 @@
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1>Gestión de Alquileres</h1>
+                        <h1>Gestión de Habitaciones</h1>
                     </div>
                     <div class="col-sm-6">
                         <button type="button" class="btn btn-success float-right" wire:click="openCreateModal">
-                            Crear Alquiler
+                            Crear Habitación
                         </button>
                     </div>
                 </div>
@@ -34,25 +34,37 @@
                                             <th>#</th>
                                             <th>Habitación</th>
                                             <th>Tipo</th>
+                                            <th>Precio por Hora</th>
+                                            <th>Precio Extra</th>
+                                            <th>Tarifa 1</th>
+                                            <th>Tarifa 2</th>
+                                            <th>Tarifa 3</th>
+                                            <th>Tarifa 4</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($alquileres as $alquilere)
+                                        @foreach ($habitaciones as $habitacion)
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $alquilere->habitacion }}</td>
-                                                <td>{{ $alquilere->tipo }}</td>
+                                                <td>{{ $habitacion->habitacion }}</td>
+                                                <td>{{ $habitacion->tipo }}</td>
+                                                <td>{{ $habitacion->preciohora }}</td>
+                                                <td>{{ $habitacion->precio_extra }}</td>
+                                                <td>{{ $habitacion->tarifa_opcion1 }}</td>
+                                                <td>{{ $habitacion->tarifa_opcion2 }}</td>
+                                                <td>{{ $habitacion->tarifa_opcion3 }}</td>
+                                                <td>{{ $habitacion->tarifa_opcion4 }}</td>
                                                 <td>
-                                                    <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $alquilere->id }})">Editar</button>
-                                                    <button class="btn btn-danger btn-sm" wire:click="delete({{ $alquilere->id }})">Eliminar</button>
+                                                    <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $habitacion->id }})">Editar</button>
+                                                    <button class="btn btn-danger btn-sm" wire:click="delete({{ $habitacion->id }})">Eliminar</button>
                                                 </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
                                 <div class="mt-3">
-                                    {{ $alquileres->links() }}
+                                    {{ $habitaciones->links() }}
                                 </div>
                             </div>
                         </div>
@@ -78,6 +90,30 @@
                             <div class="mb-3">
                                 <label for="tipo" class="form-label">Tipo</label>
                                 <input type="text" class="form-control" id="tipo" wire:model="tipo">
+                            </div>
+                            <div class="mb-3">
+                                <label for="preciohora" class="form-label">Precio por Hora</label>
+                                <input type="number" class="form-control" id="preciohora" wire:model="preciohora">
+                            </div>
+                            <div class="mb-3">
+                                <label for="precio_extra" class="form-label">Precio Extra</label>
+                                <input type="number" class="form-control" id="precio_extra" wire:model="precio_extra">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion1" class="form-label">Tarifa Opción 1</label>
+                                <input type="number" class="form-control" id="tarifa_opcion1" wire:model="tarifa_opcion1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion2" class="form-label">Tarifa Opción 2</label>
+                                <input type="number" class="form-control" id="tarifa_opcion2" wire:model="tarifa_opcion2">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion3" class="form-label">Tarifa Opción 3</label>
+                                <input type="number" class="form-control" id="tarifa_opcion3" wire:model="tarifa_opcion3">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion4" class="form-label">Tarifa Opción 4</label>
+                                <input type="number" class="form-control" id="tarifa_opcion4" wire:model="tarifa_opcion4">
                             </div>
                         </form>
                     </div>
@@ -107,6 +143,30 @@
                                 <label for="tipo" class="form-label">Tipo</label>
                                 <input type="text" class="form-control" id="tipo" wire:model="tipo">
                             </div>
+                            <div class="mb-3">
+                                <label for="preciohora" class="form-label">Precio por Hora</label>
+                                <input type="number" class="form-control" id="preciohora" wire:model="preciohora">
+                            </div>
+                            <div class="mb-3">
+                                <label for="precio_extra" class="form-label">Precio Extra</label>
+                                <input type="number" class="form-control" id="precio_extra" wire:model="precio_extra">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion1" class="form-label">Tarifa Opción 1</label>
+                                <input type="number" class="form-control" id="tarifa_opcion1" wire:model="tarifa_opcion1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion2" class="form-label">Tarifa Opción 2</label>
+                                <input type="number" class="form-control" id="tarifa_opcion2" wire:model="tarifa_opcion2">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion3" class="form-label">Tarifa Opción 3</label>
+                                <input type="number" class="form-control" id="tarifa_opcion3" wire:model="tarifa_opcion3">
+                            </div>
+                            <div class="mb-3">
+                                <label for="tarifa_opcion4" class="form-label">Tarifa Opción 4</label>
+                                <input type="number" class="form-control" id="tarifa_opcion4" wire:model="tarifa_opcion4">
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -117,26 +177,24 @@
             </div>
         </div>
     </div>
-    <script>
-        window.addEventListener('show-create-modal', () => {
-            let modalEl = document.getElementById('createAlquilerModal');
-            let modal = new bootstrap.Modal(modalEl);
-            modal.show();
-        });
-
-        window.addEventListener('show-edit-modal', () => {
-            let modalEl = document.getElementById('editAlquilerModal');
-            let modal = new bootstrap.Modal(modalEl);
-            modal.show();
-        });
-
-        window.addEventListener('close-modal', () => {
-            let modalElCreate = document.getElementById('createAlquilerModal');
-            let modalElEdit = document.getElementById('editAlquilerModal');
-            let modalCreate = new bootstrap.Modal(modalElCreate);
-            let modalEdit = new bootstrap.Modal(modalElEdit);
-            modalCreate.hide();
-            modalEdit.hide();
-        });
-    </script>
 </section>
+<script>
+    window.addEventListener('show-create-modal', () => {
+        let modalEl = document.getElementById('createAlquilerModal');
+        let modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    });
+
+    window.addEventListener('show-edit-modal', () => {
+        let modalEl = document.getElementById('editAlquilerModal');
+        let modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    });
+
+    window.addEventListener('close-modal', () => {
+        let modalCreate = document.getElementById('createAlquilerModal');
+        let modalEdit = document.getElementById('editAlquilerModal');
+        new bootstrap.Modal(modalCreate).hide();
+        new bootstrap.Modal(modalEdit).hide();
+    });
+</script>

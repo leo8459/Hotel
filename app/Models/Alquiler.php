@@ -19,8 +19,10 @@ class Alquiler extends Model
         'salida',
         'horas',
         'total',
-        'habitacion_id',
+        'habitacion_id', 
         'inventario_id', // Agregado para la relación
+        'inventario_detalle', // Agregado para permitir el guardado
+        'tarifa_seleccionada', // Agregado para permitir el guardado
         'estado',
     ];
 

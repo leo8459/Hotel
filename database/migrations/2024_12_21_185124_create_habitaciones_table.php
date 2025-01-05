@@ -15,6 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('habitacion'); // Nombre o identificador de la habitación
             $table->string('tipo'); // Tipo de la habitación
+            $table->integer('preciohora')->nullable(); // Precio por hora
+            $table->integer('precio_extra')->nullable(); // Precio extra
+            $table->integer('tarifa_opcion1')->nullable(); // Tarifa opción 1
+            $table->integer('tarifa_opcion2')->nullable(); // Tarifa opción 2
+            $table->integer('tarifa_opcion3')->nullable(); // Tarifa opción 3
+            $table->integer('tarifa_opcion4')->nullable(); // Tarifa opción 4
             $table->boolean('estado')->default(1); // Estado de la habitación, por defecto 1
 
             $table->timestamps(); // created_at y updated_at
