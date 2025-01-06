@@ -1,5 +1,7 @@
 <section class="content">
     <div class="container-fluid">
+ 
+
         <section class="content-header">
             <div class="container-fluid">
                 <div class="row mb-2">
@@ -137,6 +139,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
+         
+
                 <form>
                     <div class="mb-3">
                         <label for="horaSalida" class="form-label">Hora de Salida</label>
@@ -207,6 +211,11 @@
                                         floor(((strtotime($horaSalida) - strtotime($selectedAlquiler->entrada)) % 3600) / 60) . ' minutos' 
                                         : 'N/A' }}">
                     </div>
+                    <div class="mb-3">
+    <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
+    <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado">
+</div>
+
                 </form>
             </div>
             <div class="modal-footer">
@@ -242,14 +251,20 @@
                     
                   
                     
-                    <div class="mb-3">
+                    <!-- <div class="mb-3">
                         <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
                         <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado">
-                    </div>
-                    <div class="mb-3">
-                        <label for="entrada" class="form-label">Hora de Entrada</label>
-                        <input type="datetime-local" class="form-control" id="entrada" wire:model="entrada" >
-                    </div>
+                    </div> -->
+                   <div class="mb-3">
+    <label for="entrada" class="form-label">Hora de Entrada</label>
+    <input type="datetime-local" 
+           class="form-control" 
+           id="entrada" 
+           wire:model="entrada" 
+           
+           >
+</div>
+
                     <div class="mb-3">
                         <label for="habitacion_id" class="form-label">Habitación</label>
                         <select class="form-control" id="habitacion_id" wire:model="habitacion_id">

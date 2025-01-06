@@ -157,78 +157,95 @@ class Alquileres extends Component
 
     // Método para realizar el pago
     public function pay()
-{
-    $this->validate([
-        'horaSalida' => 'required|date|after_or_equal:selectedAlquiler.entrada',
-        'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA', // Validar el tipo de pago
-        'tarifaSeleccionada' => 'required|string|in:tarifa_opcion1,tarifa_opcion2,tarifa_opcion3,tarifa_opcion4' // Validar la tarifa seleccionada
-    ]);
-
-    // Convertir las fechas a Carbon en la zona horaria de La Paz
-    $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
-    $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
-
-    // Calcular la diferencia en horas y minutos
-    $diferenciaHoras = $entrada->diffInHours($salida);
-    $diferenciaMinutos = $entrada->diff($salida)->i;
-
-    // Obtener la habitación y la tarifa seleccionada
-    $habitacion = $this->selectedAlquiler->habitacion;
-
-    if (!$habitacion) {
-        session()->flash('error', 'No se encontró la habitación asociada.');
-        return;
-    }
-
-    $precioTarifa = $habitacion->{$this->tarifaSeleccionada};
-
-    // Calcular el precio total basado en la duración
-    $precioTotal = $diferenciaHoras > 1
-        ? $precioTarifa + (($diferenciaHoras - 1) * $habitacion->precio_extra)
-        : $precioTarifa;
-
-    if ($diferenciaMinutos > 0) {
-        $precioTotal += $habitacion->precio_extra;
-    }
-
-    // Calcular el precio total del inventario seleccionado
-    $precioInventario = 0;
-
-    if (is_array($this->selectedInventarios) && !empty($this->selectedInventarios)) {
-        foreach ($this->selectedInventarios as $item) {
-            $inventario = Inventario::find($item['id']);
-            if ($inventario) {
-                $precioInventario += $inventario->precio * $item['cantidad']; // Calcular precio total del inventario
-                if ($inventario->stock >= $item['cantidad']) {
-                    $inventario->decrement('stock', $item['cantidad']); // Reducir el stock
-                } else {
-                    session()->flash('error', "El inventario '{$inventario->articulo}' no tiene suficiente stock para completar el pago.");
-                    return;
+    {
+        $this->validate([
+            'horaSalida' => 'required|date|after_or_equal:selectedAlquiler.entrada',
+            'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA', // Validar el tipo de pago
+        ]);
+    
+        // Convertir las fechas a Carbon en la zona horaria de La Paz
+        $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
+        $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
+    
+        // Obtener la habitación
+        $habitacion = $this->selectedAlquiler->habitacion;
+    
+        if (!$habitacion) {
+            session()->flash('error', 'No se encontró la habitación asociada.');
+            return;
+        }
+    
+        // Obtener el precio de la tarifa seleccionada o usar `preciohora` si no hay tarifa seleccionada
+        $precioTarifa = $this->tarifaSeleccionada 
+            ? $habitacion->{$this->tarifaSeleccionada} 
+            : $habitacion->preciohora;
+    
+        $precioTotal = 0;
+    
+        // Calcular el tiempo transcurrido
+        $diferenciaHoras = $entrada->diffInHours($salida);
+        $diferenciaMinutos = $entrada->diff($salida)->i;
+    
+        if ($diferenciaHoras == 0 && $diferenciaMinutos > 0) {
+            // Si solo pasó un minuto pero no una hora completa, aplicar el precio por hora
+            $precioTotal += $habitacion->preciohora;
+        } else {
+            // Si pasó una o más horas
+            $precioTotal += $precioTarifa;
+            if ($diferenciaHoras > 1 || $diferenciaMinutos > 0) {
+                $precioTotal += ($diferenciaHoras - 1) * $habitacion->preciohora;
+            }
+        }
+    
+        // Calcular el precio del inventario seleccionado
+        $precioInventario = 0;
+        if (is_array($this->selectedInventarios) && !empty($this->selectedInventarios)) {
+            foreach ($this->selectedInventarios as $item) {
+                $inventario = Inventario::find($item['id']);
+                if ($inventario) {
+                    $precioInventario += $inventario->precio * $item['cantidad'];
+                    if ($inventario->stock >= $item['cantidad']) {
+                        $inventario->decrement('stock', $item['cantidad']);
+                    } else {
+                        session()->flash('error', "El inventario '{$inventario->articulo}' no tiene suficiente stock.");
+                        return;
+                    }
                 }
             }
         }
+    
+        // Sumar el costo del inventario
+        $precioTotal += $precioInventario;
+    
+        // Sumar el costo del aire acondicionado si está activado
+        if ($this->aireacondicionado) {
+            $precioTotal += 40; // Costo adicional por aire acondicionado
+        }
+    
+        // Actualizar el alquiler con los datos calculados
+        $this->selectedAlquiler->update([
+            'salida' => $this->horaSalida,
+            'horas' => $diferenciaHoras + ($diferenciaMinutos > 0 ? 1 : 0), // Ajustar las horas
+            'estado' => 'pagado',
+            'tipopago' => $this->tipopago,
+            'total' => $precioTotal,
+            'tarifa_seleccionada' => $this->tarifaSeleccionada,
+            'inventario_detalle' => json_encode($this->selectedInventarios),
+            'aireacondicionado' => $this->aireacondicionado,
+        ]);
+    
+        // Mensaje de confirmación
+        session()->flash('message', "Habitación pagada. Total a cobrar: $precioTotal (Tarifa: $precioTarifa, Inventario: $precioInventario, Aire acondicionado: " . ($this->aireacondicionado ? '40' : '0') . ").");
+    
+        $this->dispatch('close-modal');
+        $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios', 'aireacondicionado']);
+        $this->resetPage();
     }
+    
 
-    // Sumar el precio del inventario al total
-    $precioTotal += $precioInventario;
+    
 
-    // Actualizar el alquiler con los datos calculados
-    $this->selectedAlquiler->update([
-        'salida' => $this->horaSalida,
-        'horas' => $diferenciaHoras,
-        'estado' => 'pagado',
-        'tipopago' => $this->tipopago,
-        'total' => $precioTotal,
-        'tarifa_seleccionada' => $this->tarifaSeleccionada,
-        'inventario_detalle' => json_encode($this->selectedInventarios), // Guardar detalle actualizado
-    ]);
-
-    session()->flash('message', "Habitación pagada. Total a pagar: $precioTotal, incluyendo inventario por $precioInventario.");
-
-    $this->dispatch('close-modal');
-    $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios']);
-    $this->resetPage();
-}
+    
 
     
 
