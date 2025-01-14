@@ -63,7 +63,7 @@ return [
     |
     */
 
-    'logo' => '<b>admin</b>AGBC',
+    'logo' => '<b>Admnistrador</b>',
     'logo_img' => 'vendor/adminlte/dist/img/AGBClogo.png',
     'logo_img_class' => 'brand-image img-circle',
     'logo_img_xl' => null,
