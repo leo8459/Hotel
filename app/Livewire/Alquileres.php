@@ -49,8 +49,10 @@ class Alquileres extends Component
             'alquileres' => $alquileres,
             'habitaciones' => $habitaciones,
             'inventarios' => $this->inventarios,
+            'esHorarioNocturno' => $this->esHorarioNocturno(),
         ]);
     }
+    
     
 
     
@@ -260,8 +262,62 @@ class Alquileres extends Component
     
         return sprintf('%02d horas, %02d minutos, %02d segundos', $diferenciaHoras, $diferenciaMinutos, $diferenciaSegundos);
     }
-    
-    
+    public function calcularTotal()
+{
+    $total = 0;
+
+    // Calcular precio por tiempo de uso
+    if ($this->selectedAlquiler && $this->horaSalida) {
+        $entrada = Carbon::parse($this->selectedAlquiler->entrada);
+        $salida = Carbon::parse($this->horaSalida);
+
+        $diferenciaHoras = $entrada->diffInHours($salida);
+        $diferenciaMinutos = $entrada->diff($salida)->i;
+
+        $habitacion = $this->selectedAlquiler->habitacion;
+        if ($habitacion) {
+            if ($diferenciaHoras == 0 && $diferenciaMinutos > 0) {
+                $total += $habitacion->preciohora;
+            } else {
+                $total += $habitacion->preciohora; // Primera hora
+                if ($diferenciaHoras > 1) {
+                    $total += ($diferenciaHoras - 1) * $habitacion->precio_extra;
+                }
+                if ($diferenciaMinutos > 0) {
+                    $total += $habitacion->precio_extra; // Minutos adicionales cuentan como una hora
+                }
+            }
+        }
+    }
+
+    // Calcular precio del inventario seleccionado
+    foreach ($this->selectedInventarios as $item) {
+        $inventario = Inventario::find($item['id']);
+        if ($inventario) {
+            $total += $inventario->precio * ($item['cantidad'] ?? 1);
+        }
+    }
+
+    // Costo adicional por aire acondicionado
+    if ($this->aireacondicionado) {
+        $total += 40; // Valor fijo por aire acondicionado
+    }
+
+    $this->total = $total;
+}
+
+public function updated($propertyName)
+{
+    if (in_array($propertyName, ['horaSalida', 'aireacondicionado', 'selectedInventarios'])) {
+        $this->calcularTotal();
+    }
+}
+public function esHorarioNocturno()
+{
+    $horaActual = Carbon::now('America/La_Paz')->format('H');
+    return $horaActual >= 21 || $horaActual < 7; // Entre 21:00 y 07:00
+}
+
 
     
 

@@ -150,19 +150,18 @@
                                     <div class="d-flex align-items-center mb-2">
                                         <!-- Checkbox para seleccionar el inventario -->
                                         <input type="checkbox" id="inventario_{{ $inventario->id }}"
-                                            wire:click="toggleInventario({{ $inventario->id }}, {{ $index }})"
-                                            class="form-check-input me-2">
+                                        wire:click="toggleInventario({{ $inventario->id }}, {{ $index }})"
+                                        class="form-check-input me-2">
 
                                         <label for="inventario_{{ $inventario->id }}" class="form-label me-3">
                                             {{ $inventario->articulo }} (Stock: {{ $inventario->stock }})
                                         </label>
 
                                         <!-- Campo de cantidad -->
-                                        <input type="number"
-                                            wire:model="selectedInventarios.{{ $inventario->id }}.cantidad"
-                                            placeholder="Cantidad" min="1" max="{{ $inventario->stock }}"
-                                            class="form-control" style="width: 100px;"
-                                            {{ !isset($selectedInventarios[$inventario->id]) ? 'disabled' : '' }}>
+                                        <input type="number" wire:model="selectedInventarios.{{ $inventario->id }}.cantidad"
+                                        placeholder="Cantidad" min="1" max="{{ $inventario->stock }}"
+                                        class="form-control" style="width: 100px;"
+                                        {{ !isset($selectedInventarios[$inventario->id]) ? 'disabled' : '' }}>
                                     </div>
                                 @endforeach
                                 @error('selectedInventarios.*.cantidad')
@@ -172,20 +171,21 @@
                             <div class="mb-3">
                                 <label for="tarifaSeleccionada" class="form-label">Seleccione Tarifa</label>
                                 <select class="form-control" id="tarifaSeleccionada" wire:model="tarifaSeleccionada">
-                                    <option value="">Seleccione una tarifa</option>
-                                    <option value="tarifa_opcion1">Tarifa Opción 1:
-                                        {{ $selectedAlquiler->habitacion->tarifa_opcion1 ?? 'N/A' }}</option>
-                                    <option value="tarifa_opcion2">Tarifa Opción 2:
-                                        {{ $selectedAlquiler->habitacion->tarifa_opcion2 ?? 'N/A' }}</option>
-                                    <option value="tarifa_opcion3">Tarifa Opción 3:
-                                        {{ $selectedAlquiler->habitacion->tarifa_opcion3 ?? 'N/A' }}</option>
-                                    <option value="tarifa_opcion4">Tarifa Opción 4:
-                                        {{ $selectedAlquiler->habitacion->tarifa_opcion4 ?? 'N/A' }}</option>
+                                    <option value="">Seleccione una Tarifa Nocturna</option>
+                                    @if ($esHorarioNocturno)
+                                        <option value="tarifa_opcion1">Tarifa Opción 1: {{ $selectedAlquiler->habitacion->tarifa_opcion1 ?? 'N/A' }}</option>
+                                        <option value="tarifa_opcion2">Tarifa Opción 2: {{ $selectedAlquiler->habitacion->tarifa_opcion2 ?? 'N/A' }}</option>
+                                        <option value="tarifa_opcion3">Tarifa Opción 3: {{ $selectedAlquiler->habitacion->tarifa_opcion3 ?? 'N/A' }}</option>
+                                        <option value="tarifa_opcion4">Tarifa Opción 4: {{ $selectedAlquiler->habitacion->tarifa_opcion4 ?? 'N/A' }}</option>
+                                    @else
+                                        
+                                    @endif
                                 </select>
                                 @error('tarifaSeleccionada')
                                     <span class="text-danger">{{ $message }}</span>
                                 @enderror
                             </div>
+                            
 
                             <div class="mb-3">
                                 <label for="tiempoTranscurrido" class="form-label">Tiempo Transcurrido</label>
@@ -201,7 +201,11 @@
                                 <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
                                 <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado">
                             </div>
-
+                            <div class="mb-3">
+                                <label for="total" class="form-label">Total</label>
+                                <input type="text" id="total" class="form-control" value="Bs {{ $total }}" readonly>
+                            </div>
+                            
                         </form>
                     </div>
                     <div class="modal-footer">
