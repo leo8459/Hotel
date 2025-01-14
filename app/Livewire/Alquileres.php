@@ -82,18 +82,21 @@ class Alquileres extends Component
 
     // Método para almacenar el alquiler
     public function toggleInventario($id, $index)
-    {
-        // Si el inventario ya está seleccionado, lo quitamos
-        if (isset($this->selectedInventarios[$id])) {
-            unset($this->selectedInventarios[$id]);
-        } else {
-            // Si no está seleccionado, lo añadimos
+{
+    if (isset($this->selectedInventarios[$id])) {
+        unset($this->selectedInventarios[$id]);
+    } else {
+        $inventario = $this->inventarios->firstWhere('id', $id);
+        if ($inventario) {
             $this->selectedInventarios[$id] = [
                 'id' => $id,
-                'cantidad' => 1, // Valor inicial
+                'cantidad' => 1, // Cantidad inicial
+                'stock' => $inventario->stock,
             ];
         }
     }
+}
+
 
     public function store()
     {
@@ -150,11 +153,26 @@ class Alquileres extends Component
             return;
         }
     
-        // Establecer la hora de salida en la zona horaria de La Paz
-        $this->horaSalida = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i'); // Formato compatible con datetime-local
-        $this->tarifaSeleccionada = null; // Inicializar tarifa seleccionada
-        $this->isPaying = true; // Este modal es para pagar
-        $this->dispatch('show-pay-modal'); // Mostrar el modal de pago
+        $this->horaSalida = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i');
+        $this->tarifaSeleccionada = null;
+    
+        // Cargar los inventarios previamente seleccionados
+        $this->selectedInventarios = json_decode($this->selectedAlquiler->inventario_detalle, true) ?? [];
+    
+        // Cargar inventarios disponibles
+        $this->inventarios = Inventario::where('stock', '>', 0)->get();
+    
+        // Sincronizar cantidades seleccionadas con el stock actual
+        foreach ($this->selectedInventarios as $id => $item) {
+            $inventario = $this->inventarios->firstWhere('id', $item['id']);
+            if ($inventario) {
+                $this->selectedInventarios[$id]['stock'] = $inventario->stock;
+            } else {
+                unset($this->selectedInventarios[$id]); // Eliminar si ya no está disponible
+            }
+        }
+    
+        $this->dispatch('show-pay-modal');
     }
     
 
@@ -319,7 +337,70 @@ public function esHorarioNocturno()
 }
 
 
-    
+public function openEditModal($id)
+{
+    $alquiler = Alquiler::find($id);
+
+    if (!$alquiler) {
+        session()->flash('error', 'El alquiler no existe.');
+        return;
+    }
+
+    $this->selectedAlquilerId = $id;
+    $this->tipoingreso = $alquiler->tipoingreso;
+    $this->entrada = $alquiler->entrada;
+    $this->selectedInventarios = json_decode($alquiler->inventario_detalle, true) ?? [];
+    $this->total = $alquiler->total;
+
+    $this->inventarios = Inventario::where('stock', '>', 0)->get();
+
+    $this->dispatch('show-edit-modal');
+}
+public function update()
+{
+    $this->validate([
+        'tipoingreso' => 'required|string',
+        'entrada' => 'required|date',
+        'selectedInventarios.*.cantidad' => 'nullable|integer|min:1',
+    ]);
+
+    $alquiler = Alquiler::find($this->selectedAlquilerId);
+
+    if (!$alquiler) {
+        session()->flash('error', 'El alquiler no existe.');
+        return;
+    }
+
+    $this->selectedInventarios = array_filter($this->selectedInventarios, function ($item) {
+        return isset($item['cantidad']) && $item['cantidad'] > 0;
+    });
+
+    foreach ($this->selectedInventarios as $item) {
+        $inventario = Inventario::find($item['id']);
+        if ($inventario->stock < $item['cantidad']) {
+            session()->flash('error', "El inventario '{$inventario->articulo}' no tiene suficiente stock.");
+            return;
+        }
+    }
+
+    $alquiler->update([
+        'tipoingreso' => $this->tipoingreso,
+        'entrada' => $this->entrada,
+        'inventario_detalle' => json_encode($this->selectedInventarios),
+        'total' => $this->calcularTotal(),
+    ]);
+
+    foreach ($this->selectedInventarios as $item) {
+        $inventario = Inventario::find($item['id']);
+        $inventario->decrement('stock', $item['cantidad']);
+    }
+
+    session()->flash('message', 'Alquiler actualizado exitosamente.');
+    $this->dispatch('close-modal');
+    $this->reset(['selectedAlquilerId', 'tipoingreso', 'entrada', 'selectedInventarios', 'total']);
+    $this->resetPage();
+}
+
 
     
 
