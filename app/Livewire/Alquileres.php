@@ -29,28 +29,29 @@ class Alquileres extends Component
 
     // Renderiza la vista y carga datos necesarios
     public function render()
-{
-    // Obtener los alquileres ordenados por fecha de entrada, del más reciente al más antiguo
-    $alquileres = Alquiler::with(['habitacion', 'inventario'])
-        ->where('tipoingreso', 'like', '%' . $this->searchTerm . '%')
-        ->orderBy('entrada', 'desc') // Ordenar por fecha de entrada (descendente)
-        ->paginate($this->perPage);
-
-    // Habitaciones disponibles
-    $habitaciones = Habitacion::whereDoesntHave('alquileres', function ($query) {
-        $query->where('estado', 'alquilado');
-    })->get();
-
-    // Inventarios disponibles
-    $this->inventarios = Inventario::where('stock', '>', 0)->get();
-
-    // Renderizar la vista con los datos
-    return view('livewire.alquileres', [
-        'alquileres' => $alquileres,
-        'habitaciones' => $habitaciones,
-        'inventarios' => $this->inventarios,
-    ]);
-}
+    {
+        $alquileres = Alquiler::with(['habitacion', 'inventario'])
+            ->where('tipoingreso', 'like', '%' . $this->searchTerm . '%')
+            ->orderBy('entrada', 'desc')
+            ->paginate($this->perPage);
+    
+        foreach ($alquileres as $alquiler) {
+            $alquiler->tiempo_transcurrido = $this->getTiempoTranscurrido($alquiler->entrada, $alquiler->estado);
+        }
+    
+        $habitaciones = Habitacion::whereDoesntHave('alquileres', function ($query) {
+            $query->where('estado', 'alquilado');
+        })->get();
+    
+        $this->inventarios = Inventario::where('stock', '>', 0)->get();
+    
+        return view('livewire.alquileres', [
+            'alquileres' => $alquileres,
+            'habitaciones' => $habitaciones,
+            'inventarios' => $this->inventarios,
+        ]);
+    }
+    
 
     
 
@@ -175,11 +176,6 @@ class Alquileres extends Component
             return;
         }
     
-        // Obtener el precio de la tarifa seleccionada o usar `preciohora` si no hay tarifa seleccionada
-        $precioTarifa = $this->tarifaSeleccionada 
-            ? $habitacion->{$this->tarifaSeleccionada} 
-            : $habitacion->preciohora;
-    
         $precioTotal = 0;
     
         // Calcular el tiempo transcurrido
@@ -190,10 +186,17 @@ class Alquileres extends Component
             // Si solo pasó un minuto pero no una hora completa, aplicar el precio por hora
             $precioTotal += $habitacion->preciohora;
         } else {
-            // Si pasó una o más horas
-            $precioTotal += $precioTarifa;
-            if ($diferenciaHoras > 1 || $diferenciaMinutos > 0) {
-                $precioTotal += ($diferenciaHoras - 1) * $habitacion->preciohora;
+            // Agregar el precio de la primera hora
+            $precioTotal += $habitacion->preciohora;
+    
+            // Agregar el precio extra por las horas adicionales
+            if ($diferenciaHoras > 1) {
+                $precioTotal += ($diferenciaHoras - 1) * $habitacion->precio_extra;
+            }
+    
+            // Si hay minutos adicionales, se cuenta como una hora adicional
+            if ($diferenciaMinutos > 0) {
+                $precioTotal += $habitacion->precio_extra;
             }
         }
     
@@ -235,14 +238,29 @@ class Alquileres extends Component
         ]);
     
         // Mensaje de confirmación
-        session()->flash('message', "Habitación pagada. Total a cobrar: $precioTotal (Tarifa: $precioTarifa, Inventario: $precioInventario, Aire acondicionado: " . ($this->aireacondicionado ? '40' : '0') . ").");
+        session()->flash('message', "Habitación pagada. Total a cobrar: $precioTotal (Primera hora: {$habitacion->preciohora}, Horas adicionales: {$habitacion->precio_extra}, Inventario: $precioInventario, Aire acondicionado: " . ($this->aireacondicionado ? '40' : '0') . ").");
     
         $this->dispatch('close-modal');
         $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios', 'aireacondicionado']);
         $this->resetPage();
     }
     
-
+    public function getTiempoTranscurrido($entrada, $estado)
+    {
+        if ($estado === 'pagado') {
+            return 'Tiempo finalizado'; // Mensaje estático si está pagado
+        }
+    
+        $entrada = Carbon::parse($entrada);
+        $ahora = Carbon::now();
+    
+        $diferenciaHoras = $entrada->diffInHours($ahora);
+        $diferenciaMinutos = $entrada->diff($ahora)->i;
+        $diferenciaSegundos = $entrada->diff($ahora)->s;
+    
+        return sprintf('%02d horas, %02d minutos, %02d segundos', $diferenciaHoras, $diferenciaMinutos, $diferenciaSegundos);
+    }
+    
     
 
     
