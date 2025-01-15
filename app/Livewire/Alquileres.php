@@ -472,6 +472,6 @@ class Alquileres extends Component
 
     
     
-    
+
 
 }

@@ -4,19 +4,15 @@
 
         <section class="content-header">
             <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
+                <div class="row">
+                    <div class="col-md-6 col-sm-12">
                         <h1>Gestión de Alquileres</h1>
                     </div>
-                    <div class="col-sm-6">
-                        <button type="button" class="btn btn-success float-right" wire:click="openCreateModal">
-                            Crear Alquiler
-                        </button>
-
-
+                    <div class="col-md-6 col-sm-12 text-end">
+                        <button type="button" class="btn btn-success">Crear Alquiler</button>
                     </div>
                 </div>
-            </div>
+
         </section>
 
         <section class="content">
@@ -32,7 +28,8 @@
                                 <input type="text" wire:model="searchTerm" class="form-control"
                                     placeholder="Buscar...">
                             </div>
-                            <div class="card-body" wire:poll.1000ms>
+                            <div class="d-none d-md-block table-responsive">
+                                <!-- Tabla visible en dispositivos medianos y grandes -->
                                 <table class="table table-striped">
                                     <thead>
                                         <tr>
@@ -101,23 +98,79 @@
                                                 <td>
                                                     @if ($alquiler->estado !== 'pagado')
                                                         <button class="btn btn-primary btn-sm"
-                                                            wire:click="openPayModal({{ $alquiler->id }})">Pagar
-                                                            Habitación</button>
+                                                            wire:click="openPayModal({{ $alquiler->id }})">Pagar</button>
                                                         <button class="btn btn-info btn-sm"
                                                             wire:click="openEditModal({{ $alquiler->id }})">Editar</button>
-                                                            <button class="btn btn-danger btn-sm">Eliminar</button>
                                                     @endif
                                                 </td>
-                                                
-                                                
                                             </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
-                                <div class="mt-3">
-                                    {{ $alquileres->links() }}
-                                </div>
                             </div>
+
+                            <div class="d-md-none">
+                                <!-- Cards visibles en dispositivos pequeños -->
+                                @foreach ($alquileres as $alquiler)
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Alquiler #{{ $loop->iteration }}</h5>
+                                            <p class="card-text">
+                                                <strong>Tipo Ingreso:</strong> {{ $alquiler->tipoingreso }}<br>
+                                                <strong>Tipo Pago:</strong> {{ $alquiler->tipopago }}<br>
+                                                <strong>Aire Acondicionado:</strong>
+                                                {{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}<br>
+                                                <strong>Habitación:</strong>
+                                                {{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}<br>
+                                                <strong>Consumo:</strong>
+                                                @php
+                                                    $detalleInventario = json_decode(
+                                                        $alquiler->inventario_detalle,
+                                                        true,
+                                                    );
+                                                @endphp
+                                                @if (is_array($detalleInventario) && !empty($detalleInventario))
+                                                    <ul>
+                                                        @foreach ($detalleInventario as $item)
+                                                            @php
+                                                                $inventario = \App\Models\Inventario::find($item['id']);
+                                                            @endphp
+                                                            @if ($inventario)
+                                                                <li>{{ $inventario->articulo }}:
+                                                                    {{ $item['cantidad'] }}</li>
+                                                            @endif
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    Sin consumo registrado
+                                                @endif
+                                                <br> <strong>Entrada:</strong> {{ $alquiler->entrada }}<br>
+                                                <strong>Salida:</strong> {{ $alquiler->salida }}<br>
+                                                <strong>Tiempo Transcurrido:</strong>
+                                                {{ $alquiler->tiempo_transcurrido }}<br>
+                                                <strong>Horas:</strong> {{ $alquiler->horas }}<br>
+                                                <strong>Tarifa Seleccionada:</strong>
+                                                {{ $alquiler->tarifa_seleccionada }}<br>
+                                                <strong>Total:</strong> {{ $alquiler->total }}<br>
+                                                <strong>Estado:</strong>
+                                                <span
+                                                    class="badge {{ $alquiler->estado == 'pagado' ? 'bg-success' : 'bg-warning' }}">
+                                                    {{ ucfirst($alquiler->estado) }}
+                                                </span>
+                                            </p>
+                                            <div class="d-flex justify-content-between">
+                                                @if ($alquiler->estado !== 'pagado')
+                                                    <button class="btn btn-primary btn-sm"
+                                                        wire:click="openPayModal({{ $alquiler->id }})">Pagar</button>
+                                                    <button class="btn btn-info btn-sm"
+                                                        wire:click="openEditModal({{ $alquiler->id }})">Editar</button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
 
                         </div>
                     </div>
@@ -127,8 +180,7 @@
 
 
         <!-- Modal para pagar habitación -->
-        <div wire:ignore.self class="modal fade" id="payAlquilerModal" tabindex="-1"
-            aria-labelledby="payAlquilerModalLabel" aria-hidden="true">
+        <div wire:ignore.self class="modal fade" id="payAlquilerModal" tabindex="-1" aria-labelledby="payAlquilerModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -219,8 +271,8 @@
                                             ' minutos'
                                         : 'N/A' }}">
                             </div>
-                           
-                            
+
+
                             <div class="mb-3">
                                 <label for="total" class="form-label">Total</label>
                                 <input type="text" id="total" class="form-control"
@@ -230,7 +282,7 @@
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" wire:click="closeCreateModal">Cerrar</button>
                         <button type="button" class="btn btn-primary" wire:click="pay">Guardar</button>
                     </div>
                 </div>
@@ -239,8 +291,7 @@
 
 
         <!-- Modal Crear Alquiler -->
-        <div wire:ignore.self class="modal fade" id="createAlquilerModal" tabindex="-1"
-            aria-labelledby="createAlquilerModalLabel" aria-hidden="true">
+        <div wire:ignore.self class="modal fade" id="editAlquilerModal" tabindex="-1" aria-labelledby="editAlquilerModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -301,7 +352,7 @@
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" wire:click="closeCreateModal">Cerrar</button>
                         <button type="button" class="btn btn-primary" wire:click="store">Guardar</button>
                     </div>
                 </div>
@@ -323,17 +374,20 @@
 
                             <div class="mb-3">
                                 <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
-                                <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado" class="form-check-input">
+                                <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado"
+                                    class="form-check-input">
                             </div>
-                            
+
                             <div class="mb-3">
-                                <label for="aireInicio" class="form-label">Hora de Inicio del Aire Acondicionado</label>
-                                <input type="datetime-local" id="aireInicio" class="form-control" wire:model="aireInicio" readonly>
+                                <label for="aireInicio" class="form-label">Hora de Inicio del Aire
+                                    Acondicionado</label>
+                                <input type="datetime-local" id="aireInicio" class="form-control"
+                                    wire:model="aireInicio" readonly>
                             </div>
-                            
-                            
-                        
-                            
+
+
+
+
 
                             <!-- Inventarios Consumidos -->
                             <div class="mb-3">
@@ -463,4 +517,18 @@
                 }
             });
         });
+        document.addEventListener('livewire:load', () => {
+    Livewire.on('close-modal', () => {
+        const modals = ['payAlquilerModal', 'editAlquilerModal'];
+        modals.forEach(modalId => {
+            const modalEl = document.getElementById(modalId);
+            if (modalEl) {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modalInstance.hide();
+            }
+        });
+    });
+});
+
+
     </script>
