@@ -24,6 +24,10 @@ class Alquileres extends Component
     public $inventarios = []; // Lista de inventarios disponibles
     public $selectedInventarios = []; // Para manejar inventarios seleccionados y cantidades
     public $tarifaSeleccionada; // Para almacenar la tarifa seleccionada al momento del pago
+    public $aireInicio; // Hora de inicio del aire acondicionado
+    public $aireFin; // Hora de fin del aire acondicionado
+
+
 
     public $showCreateModal = false;
     public $selectedInventarioId; // ID del inventario seleccionado en el combo box
@@ -148,33 +152,36 @@ class Alquileres extends Component
     public function openPayModal($id)
     {
         $this->selectedAlquiler = Alquiler::find($id);
-
+    
         if (!$this->selectedAlquiler) {
             session()->flash('error', 'El alquiler no existe.');
             return;
         }
-
+    
         $this->horaSalida = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i');
         $this->tarifaSeleccionada = null;
-
-        // Cargar los inventarios previamente seleccionados
-        $this->selectedInventarios = json_decode($this->selectedAlquiler->inventario_detalle, true) ?? [];
-
-        // Cargar inventarios disponibles
-        $this->inventarios = Inventario::where('stock', '>', 0)->get();
-
-        // Sincronizar cantidades seleccionadas con el stock actual
-        foreach ($this->selectedInventarios as $id => $item) {
-            $inventario = $this->inventarios->firstWhere('id', $item['id']);
-            if ($inventario) {
-                $this->selectedInventarios[$id]['stock'] = $inventario->stock;
-            } else {
-                unset($this->selectedInventarios[$id]); // Eliminar si ya no está disponible
-            }
-        }
-
+    
+        $this->selectedInventarios = collect(json_decode($this->selectedAlquiler->inventario_detalle, true) ?? [])
+            ->mapWithKeys(function ($item) {
+                $inventario = Inventario::find($item['id']);
+                return [
+                    $item['id'] => [
+                        'id' => $item['id'],
+                        'articulo' => $inventario->articulo ?? 'Sin nombre',
+                        'cantidad' => $item['cantidad'] ?? 0,
+                        'stock' => $inventario->stock ?? 0,
+                    ],
+                ];
+            })->toArray();
+    
+        // Asegurarse de cargar correctamente el estado del aire acondicionado
+        $this->aireacondicionado = $this->selectedAlquiler->aireacondicionado;
+    
         $this->dispatch('show-pay-modal');
     }
+    
+    
+    
 
 
     // Método para realizar el pago
@@ -184,23 +191,24 @@ class Alquileres extends Component
             'horaSalida' => 'required|date|after_or_equal:selectedAlquiler.entrada',
             'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA',
         ]);
-
-        $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
-        $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
+    
+        // Parsear las fechas con la zona horaria de La Paz
+    $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
+    $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
 
         $habitacion = $this->selectedAlquiler->habitacion;
-
+    
         if (!$habitacion) {
             session()->flash('error', 'No se encontró la habitación asociada.');
             return;
         }
-
+    
         $precioTotal = 0;
-
-        // Calcular precio por horas
+    
+        // Calcular precio por horas de la habitación
         $diferenciaHoras = $entrada->diffInHours($salida);
         $diferenciaMinutos = $entrada->diff($salida)->i;
-
+    
         if ($diferenciaHoras == 0 && $diferenciaMinutos > 0) {
             $precioTotal += $habitacion->preciohora;
         } else {
@@ -212,7 +220,27 @@ class Alquileres extends Component
                 $precioTotal += $habitacion->precio_extra;
             }
         }
-
+    
+        // Calcular costo del aire acondicionado
+        $costoAire = 0;
+        if ($this->aireacondicionado) {
+            $aireInicio = $this->selectedAlquiler->aire_inicio ? Carbon::parse($this->selectedAlquiler->aire_inicio) : null;
+            $aireFin = Carbon::now('America/La_Paz'); // Asignar automáticamente la hora actual como fin del aire acondicionado
+    
+            if ($aireInicio && $aireFin->greaterThan($aireInicio)) {
+                $diferenciaHorasAire = $aireInicio->diffInHours($aireFin);
+                $costoAire = $diferenciaHorasAire * 10; // 10 Bs por hora
+                $precioTotal += $costoAire;
+            }
+    
+            \Log::info('Costo del aire acondicionado calculado', [
+                'aireInicio' => $aireInicio,
+                'aireFin' => $aireFin,
+                'diferenciaHorasAire' => $diferenciaHorasAire ?? 0,
+                'costoAire' => $costoAire,
+            ]);
+        }
+    
         // Calcular precio del inventario seleccionado
         foreach ($this->selectedInventarios as $item) {
             $inventario = Inventario::find($item['id']);
@@ -226,12 +254,8 @@ class Alquileres extends Component
                 }
             }
         }
-
-        // Costo adicional por aire acondicionado
-        if ($this->aireacondicionado) {
-            $precioTotal += 40;
-        }
-
+    
+        // Actualizar el alquiler con los nuevos valores
         $this->selectedAlquiler->update([
             'salida' => $this->horaSalida,
             'horas' => $diferenciaHoras + ($diferenciaMinutos > 0 ? 1 : 0),
@@ -241,18 +265,21 @@ class Alquileres extends Component
             'tarifa_seleccionada' => $this->tarifaSeleccionada,
             'inventario_detalle' => json_encode($this->selectedInventarios),
             'aireacondicionado' => $this->aireacondicionado,
+            'aire_fin' => Carbon::now('America/La_Paz'), // Guardar la hora actual como aire_fin
         ]);
-
+    
         session()->flash('message', "Habitación pagada. Total: $precioTotal.");
-
+    
         // Cierra el modal y recarga la página
         $this->dispatch('close-modal');
         $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios', 'aireacondicionado']);
         $this->resetPage();
-
+    
         // Refrescar la página
         return redirect()->to(request()->header('Referer'));
     }
+    
+    
 
 
     public function getTiempoTranscurrido($entrada, $estado)
@@ -306,12 +333,10 @@ class Alquileres extends Component
             }
         }
 
-        // Costo adicional por aire acondicionado
-        if ($this->aireacondicionado) {
-            $total += 40; // Valor fijo por aire acondicionado
-        }
+        // Calcular costo del aire acondicionado
+        $total += $this->calcularCostoAire();
 
-        $this->total = $total;
+    $this->total = $total;
     }
 
     public function updated($propertyName)
@@ -330,74 +355,61 @@ class Alquileres extends Component
     public function openEditModal($id)
     {
         $alquiler = Alquiler::find($id);
-
+    
         if (!$alquiler) {
             session()->flash('error', 'El alquiler no existe.');
             return;
         }
-
+    
         $this->selectedAlquilerId = $id;
         $this->tipoingreso = $alquiler->tipoingreso;
         $this->entrada = $alquiler->entrada;
         $this->selectedInventarios = json_decode($alquiler->inventario_detalle, true) ?? [];
         $this->total = $alquiler->total;
-
+        $this->aireacondicionado = $alquiler->aireacondicionado;
+        $this->aireInicio = $alquiler->aire_inicio ? Carbon::parse($alquiler->aire_inicio)->format('Y-m-d\TH:i') : null;
+        $this->aireFin = $alquiler->aire_fin ? Carbon::parse($alquiler->aire_fin)->format('Y-m-d\TH:i') : null;
+    
         $this->inventarios = Inventario::where('stock', '>', 0)->get();
-
+    
         $this->dispatch('show-edit-modal');
     }
+    
+
     public function update()
     {
-        $this->validate([
-            'tipoingreso' => 'required|string',
-            'entrada' => 'required|date',
-            'selectedInventarios.*.cantidad' => 'nullable|integer|min:1',
-        ]);
-
+        
         $alquiler = Alquiler::find($this->selectedAlquilerId);
-
+    
         if (!$alquiler) {
             session()->flash('error', 'El alquiler no existe.');
             return;
         }
-
-        // Validar inventarios seleccionados
-        $this->selectedInventarios = array_filter($this->selectedInventarios, function ($item) {
-            return isset($item['cantidad']) && $item['cantidad'] > 0;
-        });
-
-        foreach ($this->selectedInventarios as $item) {
-            $inventario = Inventario::find($item['id']);
-            if ($inventario->stock < $item['cantidad']) {
-                session()->flash('error', "El inventario '{$inventario->articulo}' no tiene suficiente stock.");
-                return;
-            }
-        }
-
-        // Actualizar el alquiler
+    
+        // Asegurar que aireInicio y aireFin estén en el formato correcto
+        $aireInicio = $this->aireInicio ? Carbon::parse($this->aireInicio) : null;
+        $aireFin = $this->aireFin ? Carbon::parse($this->aireFin) : null;
+    
         $alquiler->update([
             'tipoingreso' => $this->tipoingreso,
             'entrada' => $this->entrada,
+            'aireacondicionado' => $this->aireacondicionado,
+            'aire_inicio' => $aireInicio,
+            'aire_fin' => $aireFin,
             'inventario_detalle' => json_encode($this->selectedInventarios),
             'total' => $this->calcularTotal(),
         ]);
-
-        // Actualizar el stock de inventarios
-        foreach ($this->selectedInventarios as $item) {
-            $inventario = Inventario::find($item['id']);
-            $inventario->decrement('stock', $item['cantidad']);
-        }
-
+    
         session()->flash('message', 'Alquiler actualizado exitosamente.');
-
-        // Cierra el modal y recarga la página
+    
         $this->dispatch('close-modal');
-        $this->reset(['selectedAlquilerId', 'tipoingreso', 'entrada', 'selectedInventarios', 'total']);
+        $this->reset(['selectedAlquilerId', 'tipoingreso', 'entrada', 'selectedInventarios', 'aireacondicionado', 'aireInicio', 'aireFin', 'total']);
         $this->resetPage();
-
-        // Refrescar la página
+    
         return redirect()->to(request()->header('Referer'));
     }
+    
+
 
 
     public function addInventario()
@@ -431,4 +443,28 @@ class Alquileres extends Component
     {
         unset($this->selectedInventarios[$id]);
     }
+
+    public function calcularCostoAire()
+{
+    if (!$this->aireInicio || !$this->aireacondicionado) {
+        return 0;
+    }
+
+    $inicio = Carbon::parse($this->aireInicio, 'America/La_Paz');
+    $fin = Carbon::now('America/La_Paz'); // Hora actual de La Paz
+
+    if ($fin->lessThanOrEqualTo($inicio)) {
+        return 0;
+    }
+
+    $horasCompletas = $inicio->diffInHours($fin);
+    $costoPorHora = 10;
+
+    return $horasCompletas * $costoPorHora;
+}
+
+    
+    
+    
+
 }

@@ -217,8 +217,9 @@
                             </div>
                             <div class="mb-3">
                                 <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
-                                <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado">
+                                <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado" class="form-check-input">
                             </div>
+                            
                             <div class="mb-3">
                                 <label for="total" class="form-label">Total</label>
                                 <input type="text" id="total" class="form-control"
@@ -305,6 +306,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Modal Editar Alquiler -->
         <div wire:ignore.self class="modal fade" id="editAlquilerModal" tabindex="-1"
             aria-labelledby="editAlquilerModalLabel" aria-hidden="true">
@@ -317,30 +319,20 @@
                     </div>
                     <div class="modal-body">
                         <form>
-                            <!-- Tipo Ingreso -->
-                            <div class="mb-3">
-                                <label for="tipoingreso" class="form-label">Tipo Ingreso</label>
-                                <select class="form-control" id="tipoingreso" wire:model="tipoingreso">
-                                    <option value="">Seleccione el tipo de ingreso</option>
-                                    <option value="A PIE">A PIE</option>
-                                    <option value="AUTOMOVIL">AUTOMOVIL</option>
-                                    <option value="MOTO">MOTO</option>
-                                    <option value="OTRO">OTRO</option>
-                                </select>
-                                @error('tipoingreso')
-                                    <span class="text-danger">{{ $message }}</span>
-                                @enderror
-                            </div>
 
-                            <!-- Hora de Entrada -->
                             <div class="mb-3">
-                                <label for="entrada" class="form-label">Hora de Entrada</label>
-                                <input type="datetime-local" class="form-control" id="entrada"
-                                    wire:model="entrada">
-                                @error('entrada')
-                                    <span class="text-danger">{{ $message }}</span>
-                                @enderror
+                                <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
+                                <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado" class="form-check-input">
                             </div>
+                            
+                            <div class="mb-3">
+                                <label for="aireInicio" class="form-label">Hora de Inicio del Aire Acondicionado</label>
+                                <input type="datetime-local" id="aireInicio" class="form-control" wire:model="aireInicio" 
+                                    {{ $aireacondicionado ? '' : 'disabled' }}>
+                            </div>
+                            
+                        
+                            
 
                             <!-- Inventarios Consumidos -->
                             <div class="mb-3">

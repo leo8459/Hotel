@@ -24,6 +24,10 @@ class Alquiler extends Model
         'inventario_detalle', // Agregado para permitir el guardado
         'tarifa_seleccionada', // Agregado para permitir el guardado
         'estado',
+        'aire_inicio',
+        'aire_fin',
+
+        
     ];
 
     // Relación con Habitacion

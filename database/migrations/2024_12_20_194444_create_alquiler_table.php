@@ -23,6 +23,8 @@ return new class extends Migration
             $table->string('estado', 20)->default('alquilado'); // Campo estado, texto con límite de 20 caracteres, por defecto 'alquilado'
             $table->text('inventario_detalle')->nullable(); // Detalle del inventario consumido
             $table->string('tarifa_seleccionada')->nullable();
+            $table->timestamp('aire_inicio')->nullable(); // Hora de inicio del aire acondicionado
+            $table->timestamp('aire_fin')->nullable(); // Hora de fin del aire acondicionado
 
             $table->timestamps();
 
