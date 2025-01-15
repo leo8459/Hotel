@@ -340,11 +340,16 @@ class Alquileres extends Component
     }
 
     public function updated($propertyName)
-    {
-        if (in_array($propertyName, ['horaSalida', 'aireacondicionado', 'selectedInventarios'])) {
-            $this->calcularTotal();
-        }
+{
+    if ($propertyName === 'aireacondicionado' && $this->aireacondicionado) {
+        $this->aireInicio = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i');
     }
+
+    if (in_array($propertyName, ['horaSalida', 'aireacondicionado', 'selectedInventarios'])) {
+        $this->calcularTotal();
+    }
+}
+
     public function esHorarioNocturno()
     {
         $horaActual = Carbon::now('America/La_Paz')->format('H');
@@ -377,37 +382,34 @@ class Alquileres extends Component
     
 
     public function update()
-    {
-        
-        $alquiler = Alquiler::find($this->selectedAlquilerId);
-    
-        if (!$alquiler) {
-            session()->flash('error', 'El alquiler no existe.');
-            return;
-        }
-    
-        // Asegurar que aireInicio y aireFin estén en el formato correcto
-        $aireInicio = $this->aireInicio ? Carbon::parse($this->aireInicio) : null;
-        $aireFin = $this->aireFin ? Carbon::parse($this->aireFin) : null;
-    
-        $alquiler->update([
-            'tipoingreso' => $this->tipoingreso,
-            'entrada' => $this->entrada,
-            'aireacondicionado' => $this->aireacondicionado,
-            'aire_inicio' => $aireInicio,
-            'aire_fin' => $aireFin,
-            'inventario_detalle' => json_encode($this->selectedInventarios),
-            'total' => $this->calcularTotal(),
-        ]);
-    
-        session()->flash('message', 'Alquiler actualizado exitosamente.');
-    
-        $this->dispatch('close-modal');
-        $this->reset(['selectedAlquilerId', 'tipoingreso', 'entrada', 'selectedInventarios', 'aireacondicionado', 'aireInicio', 'aireFin', 'total']);
-        $this->resetPage();
-    
-        return redirect()->to(request()->header('Referer'));
+{
+    $alquiler = Alquiler::find($this->selectedAlquilerId);
+
+    if (!$alquiler) {
+        session()->flash('error', 'El alquiler no existe.');
+        return;
     }
+
+    // Asegurarse de que aireInicio esté en el formato correcto
+    $aireInicio = $this->aireInicio ? Carbon::parse($this->aireInicio) : null;
+
+    $alquiler->update([
+        'tipoingreso' => $this->tipoingreso,
+        'entrada' => $this->entrada,
+        'aireacondicionado' => $this->aireacondicionado,
+        'aire_inicio' => $aireInicio,
+        'inventario_detalle' => json_encode($this->selectedInventarios),
+        'total' => $this->calcularTotal(),
+    ]);
+
+    session()->flash('message', 'Alquiler actualizado exitosamente.');
+    $this->dispatch('close-modal');
+    $this->reset(['selectedAlquilerId', 'tipoingreso', 'entrada', 'selectedInventarios', 'aireacondicionado', 'aireInicio', 'total']);
+    $this->resetPage();
+
+    return redirect()->to(request()->header('Referer'));
+}
+
     
 
 

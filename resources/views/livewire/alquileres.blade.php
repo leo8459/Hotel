@@ -215,10 +215,7 @@
                                             ' minutos'
                                         : 'N/A' }}">
                             </div>
-                            <div class="mb-3">
-                                <label for="aireacondicionado" class="form-label">Aire Acondicionado</label>
-                                <input type="checkbox" id="aireacondicionado" wire:model="aireacondicionado" class="form-check-input">
-                            </div>
+                           
                             
                             <div class="mb-3">
                                 <label for="total" class="form-label">Total</label>
@@ -327,9 +324,9 @@
                             
                             <div class="mb-3">
                                 <label for="aireInicio" class="form-label">Hora de Inicio del Aire Acondicionado</label>
-                                <input type="datetime-local" id="aireInicio" class="form-control" wire:model="aireInicio" 
-                                    {{ $aireacondicionado ? '' : 'disabled' }}>
+                                <input type="datetime-local" id="aireInicio" class="form-control" wire:model="aireInicio" readonly>
                             </div>
+                            
                             
                         
                             
