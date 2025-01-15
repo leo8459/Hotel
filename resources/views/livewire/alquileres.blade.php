@@ -156,27 +156,32 @@
 
                             <div class="mb-3">
                                 <label for="inventarios" class="form-label">Agregar Inventario</label>
-                                <select id="inventarios" class="form-control" wire:model="selectedInventarioId" wire:change="addInventario">
+                                <select id="inventarios" class="form-control" wire:model="selectedInventarioId"
+                                    wire:change="addInventario">
                                     <option value="">Seleccione o busque un inventario</option>
                                     @foreach ($inventarios as $inventario)
-                                        <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock: {{ $inventario->stock }})</option>
+                                        <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock:
+                                            {{ $inventario->stock }})</option>
                                     @endforeach
                                 </select>
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label for="inventario-list" class="form-label">Lista de Inventarios Consumidos</label>
                                 <ul>
                                     @foreach ($selectedInventarios as $id => $item)
                                         <li>
                                             {{ $item['articulo'] ?? 'Sin nombre' }} - Cantidad:
-                                            <input type="number" wire:model="selectedInventarios.{{ $id }}.cantidad" min="1" max="{{ $item['stock'] ?? 0 }}">
-                                            <button type="button" class="btn btn-danger btn-sm" wire:click="removeInventario({{ $id }})">Eliminar</button>
+                                            <input type="number"
+                                                wire:model="selectedInventarios.{{ $id }}.cantidad"
+                                                min="1" max="{{ $item['stock'] ?? 0 }}">
+                                            <button type="button" class="btn btn-danger btn-sm"
+                                                wire:click="removeInventario({{ $id }})">Eliminar</button>
                                         </li>
                                     @endforeach
                                 </ul>
                             </div>
-                            
+
 
                             <div class="mb-3">
                                 <label for="tarifaSeleccionada" class="form-label">Seleccione Tarifa</label>
@@ -340,27 +345,33 @@
                             <!-- Inventarios Consumidos -->
                             <div class="mb-3">
                                 <label for="inventarios" class="form-label">Agregar Inventario</label>
-                                <select id="inventarios" class="form-control" wire:model="selectedInventarioId" wire:change="addInventario">
+                                <select id="inventarios" class="form-control" wire:model="selectedInventarioId"
+                                    wire:change="addInventario">
                                     <option value="">Seleccione o busque un inventario</option>
                                     @foreach ($inventarios as $inventario)
-                                        <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock: {{ $inventario->stock }})</option>
+                                        <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock:
+                                            {{ $inventario->stock }})</option>
                                     @endforeach
                                 </select>
                             </div>
-                            
+
                             <div class="mb-3">
-                                <label for="inventario-list" class="form-label">Lista de Inventarios Consumidos</label>
+                                <label for="inventario-list" class="form-label">Lista de Inventarios
+                                    Consumidos</label>
                                 <ul>
                                     @foreach ($selectedInventarios as $id => $item)
-                                    <li>
-                                        {{ $item['articulo'] ?? 'Sin nombre' }} - Cantidad:
-                                        <input type="number" wire:model="selectedInventarios.{{ $id }}.cantidad" min="1" max="{{ $item['stock'] ?? 0 }}">
-                                        <button type="button" class="btn btn-danger btn-sm" wire:click="removeInventario({{ $id }})">Eliminar</button>
-                                    </li>
-                                @endforeach
+                                        <li>
+                                            {{ $item['articulo'] ?? 'Sin nombre' }} - Cantidad:
+                                            <input type="number"
+                                                wire:model="selectedInventarios.{{ $id }}.cantidad"
+                                                min="1" max="{{ $item['stock'] ?? 0 }}">
+                                            <button type="button" class="btn btn-danger btn-sm"
+                                                wire:click="removeInventario({{ $id }})">Eliminar</button>
+                                        </li>
+                                    @endforeach
                                 </ul>
                             </div>
-                            
+
 
                             <!-- Total -->
                             <div class="mb-3">
@@ -442,5 +453,21 @@
             let modalEl = document.getElementById('payAlquilerModal');
             let modal = new bootstrap.Modal(modalEl);
             modal.hide();
+        });
+        document.addEventListener('livewire:load', () => {
+            Livewire.on('close-modal', () => {
+                let editModal = document.getElementById('editAlquilerModal');
+                let payModal = document.getElementById('payAlquilerModal');
+
+                if (editModal) {
+                    let modalInstance = bootstrap.Modal.getInstance(editModal);
+                    if (modalInstance) modalInstance.hide();
+                }
+
+                if (payModal) {
+                    let modalInstance = bootstrap.Modal.getInstance(payModal);
+                    if (modalInstance) modalInstance.hide();
+                }
+            });
         });
     </script>
