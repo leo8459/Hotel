@@ -83,6 +83,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
 
+    //DASHBOARD
+    Route::get('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);
+
+
 });
 
 require __DIR__ . '/auth.php';

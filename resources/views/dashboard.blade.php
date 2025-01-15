@@ -1,22 +1,11 @@
 @extends('adminlte::page')
-
 @section('title', 'Dashboard')
-
-@section('content_header')
-    <h1>Sistema de Informacion y Reclamos de la AGBC</h1>
-@stop
+@section('template_title')
+Sistema de EMS AGBC
+@endsection
 
 @section('content')
-    <p>Welcome to this beautiful admin panel.</p>
-    @include('footer')
-@stop
-
-@section('css')
-    {{-- Add here extra stylesheets --}}
-    {{-- <link rel="stylesheet" href="/css/admin_custom.css"> --}}
-    
-@stop
-
+@livewire('dashboardgeneral')
+@include('footer')
+@endsection
 @section('js')
-    
-@stop
