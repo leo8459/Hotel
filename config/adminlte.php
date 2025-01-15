@@ -63,8 +63,8 @@ return [
     |
     */
 
-    'logo' => '<b>Admnistrador</b>',
-    'logo_img' => 'vendor/adminlte/dist/img/AGBClogo.png',
+    'logo' => '<b>Administrador</b>',
+    'logo_img' => 'vendor/adminlte/dist/img/LOGO.png',
     'logo_img_class' => 'brand-image img-circle',
     'logo_img_xl' => null,
     'logo_img_xl_class' => 'brand-image-xs',
@@ -86,7 +86,7 @@ return [
     'auth_logo' => [
         'enabled' => false,
         'img' => [
-            'path' => 'vendor/adminlte/dist/img/AGBClogo.png',
+            'path' => 'vendor/adminlte/dist/img/LOGO.png',
             'alt' => 'Auth Logo',
             'class' => '',
             'width' => 50,
@@ -113,7 +113,7 @@ return [
         'enabled' => true,
         'mode' => 'fullscreen',
         'img' => [
-            'path' => 'vendor/adminlte/dist/img/AGBClogo.png',
+            'path' => 'vendor/adminlte/dist/img/LOGO.png',
             'alt' => 'AdminLTE Preloader Image',
             'effect' => 'animation__shake',
             'width' => 60,
@@ -322,7 +322,7 @@ return [
             // 'can'  => 'users.index',
             'submenu' => [
                 [
-                    'text' => 'Personal AGBC',
+                    'text' => 'Personal',
                     'url' => 'users',
                     'icon' => 'fas fa-user',
                 ],
