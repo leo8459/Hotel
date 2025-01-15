@@ -193,9 +193,9 @@ class Alquileres extends Component
         ]);
     
         // Parsear las fechas con la zona horaria de La Paz
-    $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
-    $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
-
+        $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
+        $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
+    
         $habitacion = $this->selectedAlquiler->habitacion;
     
         if (!$habitacion) {
@@ -205,41 +205,36 @@ class Alquileres extends Component
     
         $precioTotal = 0;
     
-        // Calcular precio por horas de la habitación
-        $diferenciaHoras = $entrada->diffInHours($salida);
-        $diferenciaMinutos = $entrada->diff($salida)->i;
+        // Calcular tiempo total en minutos
+        $diferenciaMinutosTotales = $entrada->diffInMinutes($salida);
     
-        if ($diferenciaHoras == 0 && $diferenciaMinutos > 0) {
+        // Definir reglas de tiempo
+        $minutosPrimeraHora = 75; // La primera hora incluye hasta 1:15
+    
+        // Calcular precio para la primera hora
+        if ($diferenciaMinutosTotales <= $minutosPrimeraHora) {
             $precioTotal += $habitacion->preciohora;
         } else {
+            // Cobrar la primera hora
             $precioTotal += $habitacion->preciohora;
-            if ($diferenciaHoras > 1) {
-                $precioTotal += ($diferenciaHoras - 1) * $habitacion->precio_extra;
-            }
-            if ($diferenciaMinutos > 0) {
+    
+            // Calcular minutos restantes después de la primera hora
+            $minutosRestantes = $diferenciaMinutosTotales - $minutosPrimeraHora;
+    
+            // Calcular horas adicionales (cada 60 minutos cuentan como 1 hora extra)
+            $horasExtras = intval($minutosRestantes / 60);
+            $precioTotal += $horasExtras * $habitacion->precio_extra;
+    
+            // Evaluar si los minutos restantes después de las horas completas exceden para otra hora
+            $minutosSobrantes = $minutosRestantes % 60;
+            if ($minutosSobrantes > 0) {
                 $precioTotal += $habitacion->precio_extra;
             }
         }
     
         // Calcular costo del aire acondicionado
-        $costoAire = 0;
-        if ($this->aireacondicionado) {
-            $aireInicio = $this->selectedAlquiler->aire_inicio ? Carbon::parse($this->selectedAlquiler->aire_inicio) : null;
-            $aireFin = Carbon::now('America/La_Paz'); // Asignar automáticamente la hora actual como fin del aire acondicionado
-    
-            if ($aireInicio && $aireFin->greaterThan($aireInicio)) {
-                $diferenciaHorasAire = $aireInicio->diffInHours($aireFin);
-                $costoAire = $diferenciaHorasAire * 10; // 10 Bs por hora
-                $precioTotal += $costoAire;
-            }
-    
-            \Log::info('Costo del aire acondicionado calculado', [
-                'aireInicio' => $aireInicio,
-                'aireFin' => $aireFin,
-                'diferenciaHorasAire' => $diferenciaHorasAire ?? 0,
-                'costoAire' => $costoAire,
-            ]);
-        }
+        $costoAire = $this->calcularCostoAire();
+        $precioTotal += $costoAire;
     
         // Calcular precio del inventario seleccionado
         foreach ($this->selectedInventarios as $item) {
@@ -258,7 +253,7 @@ class Alquileres extends Component
         // Actualizar el alquiler con los nuevos valores
         $this->selectedAlquiler->update([
             'salida' => $this->horaSalida,
-            'horas' => $diferenciaHoras + ($diferenciaMinutos > 0 ? 1 : 0),
+            'horas' => ceil($diferenciaMinutosTotales / 60), // Redondear a la hora más cercana
             'estado' => 'pagado',
             'tipopago' => $this->tipopago,
             'total' => $precioTotal,
@@ -275,9 +270,10 @@ class Alquileres extends Component
         $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios', 'aireacondicionado']);
         $this->resetPage();
     
-        // Refrescar la página
         return redirect()->to(request()->header('Referer'));
     }
+    
+
     
     
 
@@ -300,31 +296,38 @@ class Alquileres extends Component
     public function calcularTotal()
     {
         $total = 0;
-
-        // Calcular precio por tiempo de uso
+    
         if ($this->selectedAlquiler && $this->horaSalida) {
             $entrada = Carbon::parse($this->selectedAlquiler->entrada);
             $salida = Carbon::parse($this->horaSalida);
-
-            $diferenciaHoras = $entrada->diffInHours($salida);
-            $diferenciaMinutos = $entrada->diff($salida)->i;
-
-            $habitacion = $this->selectedAlquiler->habitacion;
-            if ($habitacion) {
-                if ($diferenciaHoras == 0 && $diferenciaMinutos > 0) {
-                    $total += $habitacion->preciohora;
-                } else {
-                    $total += $habitacion->preciohora; // Primera hora
-                    if ($diferenciaHoras > 1) {
-                        $total += ($diferenciaHoras - 1) * $habitacion->precio_extra;
-                    }
-                    if ($diferenciaMinutos > 0) {
-                        $total += $habitacion->precio_extra; // Minutos adicionales cuentan como una hora
-                    }
+    
+            $diferenciaMinutosTotales = $entrada->diffInMinutes($salida);
+    
+            // Definir reglas de tiempo
+            $minutosPrimeraHora = 75; // La primera hora incluye hasta 1:15
+    
+            // Calcular precio para la primera hora
+            if ($diferenciaMinutosTotales <= $minutosPrimeraHora) {
+                $total += $this->selectedAlquiler->habitacion->preciohora;
+            } else {
+                // Cobrar la primera hora
+                $total += $this->selectedAlquiler->habitacion->preciohora;
+    
+                // Calcular minutos restantes después de la primera hora
+                $minutosRestantes = $diferenciaMinutosTotales - $minutosPrimeraHora;
+    
+                // Calcular horas adicionales (cada 60 minutos cuentan como 1 hora extra)
+                $horasExtras = intval($minutosRestantes / 60);
+                $total += $horasExtras * $this->selectedAlquiler->habitacion->precio_extra;
+    
+                // Evaluar si los minutos restantes después de las horas completas exceden para otra hora
+                $minutosSobrantes = $minutosRestantes % 60;
+                if ($minutosSobrantes > 0) {
+                    $total += $this->selectedAlquiler->habitacion->precio_extra;
                 }
             }
         }
-
+    
         // Calcular precio del inventario seleccionado
         foreach ($this->selectedInventarios as $item) {
             $inventario = Inventario::find($item['id']);
@@ -332,12 +335,14 @@ class Alquileres extends Component
                 $total += $inventario->precio * ($item['cantidad'] ?? 1);
             }
         }
-
+    
         // Calcular costo del aire acondicionado
         $total += $this->calcularCostoAire();
-
-    $this->total = $total;
+    
+        $this->total = $total;
     }
+    
+
 
     public function updated($propertyName)
 {
