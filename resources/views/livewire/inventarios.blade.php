@@ -6,8 +6,8 @@
                     <div class="col-sm-6">
                         <h1>Gestión de Artículos</h1>
                     </div>
-                    <div class="col-sm-6">
-                        <button type="button" class="btn btn-success float-right" wire:click="openCreateModal">
+                    <div class="col-sm-6 text-end">
+                        <button type="button" class="btn btn-success" wire:click="openCreateModal">
                             Crear Artículo
                         </button>
                     </div>
@@ -21,51 +21,67 @@
                     <div class="alert alert-success">{{ session('message') }}</div>
                 @endif
 
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <input type="text" wire:model="searchTerm" class="form-control"
-                                    placeholder="Buscar...">
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Artículo</th>
-                                            <th>Precio</th>
-                                            <th>Stock</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($articulos as $articulo)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $articulo->articulo }}</td>
-                                                <td>{{ $articulo->precio }}</td>
-                                                <td>{{ $articulo->stock }}</td>
-                                                <td>
-                                                    <span class="badge {{ $articulo->estado ? 'bg-success' : 'bg-danger' }}">
-                                                        {{ $articulo->estado ? 'Activo' : 'Inactivo' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $articulo->id }})">Editar</button>
-<button class="btn btn-danger btn-sm" wire:click="delete({{ $articulo->id }})">Eliminar</button>
+                <!-- Tabla para pantallas medianas y grandes -->
+                <div class="d-none d-md-block">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Artículo</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($articulos as $articulo)
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>{{ $articulo->articulo }}</td>
+                                    <td>{{ $articulo->precio }}</td>
+                                    <td>{{ $articulo->stock }}</td>
+                                    <td>
+                                        <span class="badge {{ $articulo->estado ? 'bg-success' : 'bg-danger' }}">
+                                            {{ $articulo->estado ? 'Activo' : 'Inactivo' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $articulo->id }})">Editar</button>
+                                        <button class="btn btn-danger btn-sm" wire:click="delete({{ $articulo->id }})">Eliminar</button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <div class="mt-3">
+                        {{ $articulos->links() }}
+                    </div>
+                </div>
 
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                                <div class="mt-3">
-                                    {{ $articulos->links() }}
+                <!-- Tarjetas para dispositivos pequeños -->
+                <div class="d-md-none">
+                    @foreach ($articulos as $articulo)
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Artículo: {{ $articulo->articulo }}</h5>
+                                <p class="card-text">
+                                    <strong>Precio:</strong> {{ $articulo->precio }}<br>
+                                    <strong>Stock:</strong> {{ $articulo->stock }}<br>
+                                    <strong>Estado:</strong>
+                                    <span class="badge {{ $articulo->estado ? 'bg-success' : 'bg-danger' }}">
+                                        {{ $articulo->estado ? 'Activo' : 'Inactivo' }}
+                                    </span>
+                                </p>
+                                <div class="d-flex justify-content-between">
+                                    <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $articulo->id }})">Editar</button>
+                                    <button class="btn btn-danger btn-sm" wire:click="delete({{ $articulo->id }})">Eliminar</button>
                                 </div>
                             </div>
                         </div>
+                    @endforeach
+                    <div class="mt-3">
+                        {{ $articulos->links() }}
                     </div>
                 </div>
             </div>
@@ -73,7 +89,7 @@
 
         <!-- Modal Crear Artículo -->
         <div wire:ignore.self class="modal fade" id="createArticuloModal" tabindex="-1" aria-labelledby="createArticuloModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="createArticuloModalLabel">Crear Artículo</h5>
@@ -117,7 +133,7 @@
 
         <!-- Modal Editar Artículo -->
         <div wire:ignore.self class="modal fade" id="editArticuloModal" tabindex="-1" aria-labelledby="editArticuloModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="editArticuloModalLabel">Editar Artículo</h5>
@@ -159,6 +175,7 @@
             </div>
         </div>
     </div>
+</section>
 
     <script>
         window.addEventListener('show-create-modal', () => {

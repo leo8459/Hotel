@@ -15,63 +15,86 @@
             </div>
         </section>
 
-        <section class="content">
-            <div class="container-fluid">
-                @if (session()->has('message'))
-                    <div class="alert alert-success">{{ session('message') }}</div>
-                @endif
-
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <input type="text" wire:model="searchTerm" class="form-control" placeholder="Buscar...">
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-striped">
-                                    <thead>
+         
+        
+                <section class="content">
+                    <div class="container-fluid">
+                        @if (session()->has('message'))
+                            <div class="alert alert-success">{{ session('message') }}</div>
+                        @endif
+        
+                        <!-- Tabla para dispositivos medianos y grandes -->
+                        <div class="d-none d-md-block">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Habitación</th>
+                                        <th>Tipo</th>
+                                        <th>Precio por Hora</th>
+                                        <th>Precio Extra</th>
+                                        <th>Tarifa Nocturna</th>
+                                        {{-- <th>Tarifa 2</th>
+                                        <th>Tarifa 3</th>
+                                        <th>Tarifa 4</th> --}}
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($habitaciones as $habitacion)
                                         <tr>
-                                            <th>#</th>
-                                            <th>Habitación</th>
-                                            <th>Tipo</th>
-                                            <th>Precio por Hora</th>
-                                            <th>Precio Extra</th>
-                                            <th>Tarifa 1</th>
-                                            <th>Tarifa 2</th>
-                                            <th>Tarifa 3</th>
-                                            <th>Tarifa 4</th>
-                                            <th>Acciones</th>
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>{{ $habitacion->habitacion }}</td>
+                                            <td>{{ $habitacion->tipo }}</td>
+                                            <td>{{ $habitacion->preciohora }}</td>
+                                            <td>{{ $habitacion->precio_extra }}</td>
+                                            <td>{{ $habitacion->tarifa_opcion1 }}</td>
+                                            {{-- <td>{{ $habitacion->tarifa_opcion2 }}</td>
+                                            <td>{{ $habitacion->tarifa_opcion3 }}</td>
+                                            <td>{{ $habitacion->tarifa_opcion4 }}</td> --}}
+                                            <td>
+                                                <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $habitacion->id }})">Editar</button>
+                                                <button class="btn btn-danger btn-sm" wire:click="delete({{ $habitacion->id }})">Eliminar</button>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($habitaciones as $habitacion)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $habitacion->habitacion }}</td>
-                                                <td>{{ $habitacion->tipo }}</td>
-                                                <td>{{ $habitacion->preciohora }}</td>
-                                                <td>{{ $habitacion->precio_extra }}</td>
-                                                <td>{{ $habitacion->tarifa_opcion1 }}</td>
-                                                <td>{{ $habitacion->tarifa_opcion2 }}</td>
-                                                <td>{{ $habitacion->tarifa_opcion3 }}</td>
-                                                <td>{{ $habitacion->tarifa_opcion4 }}</td>
-                                                <td>
-                                                    <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $habitacion->id }})">Editar</button>
-                                                    <button class="btn btn-danger btn-sm" wire:click="delete({{ $habitacion->id }})">Eliminar</button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                                <div class="mt-3">
-                                    {{ $habitaciones->links() }}
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <div class="mt-3">
+                                {{ $habitaciones->links() }}
+                            </div>
+                        </div>
+        
+                        <!-- Cards para dispositivos pequeños -->
+                        <div class="d-md-none">
+                            @foreach ($habitaciones as $habitacion)
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Habitación: {{ $habitacion->habitacion }}</h5>
+                                        <p class="card-text">
+                                            <strong>Tipo:</strong> {{ $habitacion->tipo }}<br>
+                                            <strong>Precio por Hora:</strong> {{ $habitacion->preciohora }}<br>
+                                            <strong>Precio Extra:</strong> {{ $habitacion->precio_extra }}<br>
+                                            <strong>Tarifa Nocturna:</strong> {{ $habitacion->tarifa_opcion1 }}<br>
+                                            {{-- <strong>Tarifa 2:</strong> {{ $habitacion->tarifa_opcion2 }}<br>
+                                            <strong>Tarifa 3:</strong> {{ $habitacion->tarifa_opcion3 }}<br>
+                                            <strong>Tarifa 4:</strong> {{ $habitacion->tarifa_opcion4 }} --}}
+                                        </p>
+                                        <div class="d-flex justify-content-between">
+                                            <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $habitacion->id }})">Editar</button>
+                                            <button class="btn btn-danger btn-sm" wire:click="delete({{ $habitacion->id }})">Eliminar</button>
+                                        </div>
+                                    </div>
                                 </div>
+                            @endforeach
+                            <div class="mt-3">
+                                {{ $habitaciones->links() }}
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
-        </section>
+        
 
         <!-- Modal Crear Habitación -->
         <div wire:ignore.self class="modal fade" id="createAlquilerModal" tabindex="-1" aria-labelledby="createAlquilerModalLabel" aria-hidden="true">
@@ -100,10 +123,10 @@
                                 <input type="number" class="form-control" id="precio_extra" wire:model="precio_extra">
                             </div>
                             <div class="mb-3">
-                                <label for="tarifa_opcion1" class="form-label">Tarifa Opción 1</label>
+                                <label for="tarifa_opcion1" class="form-label">Tarifa Horario Nocturno</label>
                                 <input type="number" class="form-control" id="tarifa_opcion1" wire:model="tarifa_opcion1">
                             </div>
-                            <div class="mb-3">
+                            {{-- <div class="mb-3">
                                 <label for="tarifa_opcion2" class="form-label">Tarifa Opción 2</label>
                                 <input type="number" class="form-control" id="tarifa_opcion2" wire:model="tarifa_opcion2">
                             </div>
@@ -114,7 +137,7 @@
                             <div class="mb-3">
                                 <label for="tarifa_opcion4" class="form-label">Tarifa Opción 4</label>
                                 <input type="number" class="form-control" id="tarifa_opcion4" wire:model="tarifa_opcion4">
-                            </div>
+                            </div> --}}
                         </form>
                     </div>
                     <div class="modal-footer">
