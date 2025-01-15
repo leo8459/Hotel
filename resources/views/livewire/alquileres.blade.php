@@ -59,19 +59,26 @@
                                                 <td>{{ $alquiler->tipoingreso }}</td>
                                                 <td>{{ $alquiler->tipopago }}</td>
                                                 <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
-                                                <td>{{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}</td>
+                                                <td>{{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}
+                                                </td>
                                                 <td>
                                                     @php
-                                                        $detalleInventario = json_decode($alquiler->inventario_detalle, true);
+                                                        $detalleInventario = json_decode(
+                                                            $alquiler->inventario_detalle,
+                                                            true,
+                                                        );
                                                     @endphp
                                                     @if (is_array($detalleInventario) && !empty($detalleInventario))
                                                         <ul>
                                                             @foreach ($detalleInventario as $item)
                                                                 @php
-                                                                    $inventario = \App\Models\Inventario::find($item['id']);
+                                                                    $inventario = \App\Models\Inventario::find(
+                                                                        $item['id'],
+                                                                    );
                                                                 @endphp
                                                                 @if ($inventario)
-                                                                    <li>{{ $inventario->articulo }}: {{ $item['cantidad'] }}</li>
+                                                                    <li>{{ $inventario->articulo }}:
+                                                                        {{ $item['cantidad'] }}</li>
                                                                 @endif
                                                             @endforeach
                                                         </ul>
@@ -86,13 +93,17 @@
                                                 <td>{{ $alquiler->tarifa_seleccionada }}</td>
                                                 <td>{{ $alquiler->total }}</td>
                                                 <td>
-                                                    <span class="badge {{ $alquiler->estado == 'pagado' ? 'bg-success' : 'bg-warning' }}">
+                                                    <span
+                                                        class="badge {{ $alquiler->estado == 'pagado' ? 'bg-success' : 'bg-warning' }}">
                                                         {{ ucfirst($alquiler->estado) }}
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <button class="btn btn-primary btn-sm" wire:click="openPayModal({{ $alquiler->id }})">Pagar Habitación</button>
-                                                    <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $alquiler->id }})">Editar</button>
+                                                    <button class="btn btn-primary btn-sm"
+                                                        wire:click="openPayModal({{ $alquiler->id }})">Pagar
+                                                        Habitación</button>
+                                                    <button class="btn btn-info btn-sm"
+                                                        wire:click="openEditModal({{ $alquiler->id }})">Editar</button>
                                                     <button class="btn btn-danger btn-sm">Eliminar</button>
                                                 </td>
                                             </tr>
@@ -103,7 +114,7 @@
                                     {{ $alquileres->links() }}
                                 </div>
                             </div>
-                            
+
                         </div>
                     </div>
                 </div>
@@ -143,55 +154,51 @@
                                 @enderror
                             </div>
 
-                            <!-- Selección de inventarios consumidos -->
                             <div class="mb-3">
-                                <label for="inventarios" class="form-label">Inventarios Consumidos</label>
-                                @foreach ($inventarios as $index => $inventario)
-                                    <div class="d-flex align-items-center mb-2">
-                                        <!-- Checkbox para seleccionar el inventario -->
-                                        <input type="checkbox" id="inventario_{{ $inventario->id }}" 
-                                            wire:click="toggleInventario({{ $inventario->id }}, {{ $index }})" 
-                                            class="form-check-input me-2"
-                                            {{ isset($selectedInventarios[$inventario->id]) ? 'checked' : '' }}>
-                            
-                                        <label for="inventario_{{ $inventario->id }}" class="form-label me-3">
-                                            {{ $inventario->articulo }} (Stock: {{ $inventario->stock }})
-                                        </label>
-                            
-                                        <!-- Campo de cantidad -->
-                                        <input type="number" 
-                                            wire:model="selectedInventarios.{{ $inventario->id }}.cantidad"
-                                            placeholder="Cantidad" 
-                                            min="1" 
-                                            max="{{ $inventario->stock }}" 
-                                            class="form-control" 
-                                            style="width: 100px;"
-                                            {{ !isset($selectedInventarios[$inventario->id]) ? 'disabled' : '' }}>
-                                    </div>
-                                @endforeach
-                                @error('selectedInventarios.*.cantidad')
-                                    <span class="text-danger">{{ $message }}</span>
-                                @enderror
+                                <label for="inventarios" class="form-label">Agregar Inventario</label>
+                                <select id="inventarios" class="form-control" wire:model="selectedInventarioId" wire:change="addInventario">
+                                    <option value="">Seleccione o busque un inventario</option>
+                                    @foreach ($inventarios as $inventario)
+                                        <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock: {{ $inventario->stock }})</option>
+                                    @endforeach
+                                </select>
                             </div>
                             
+                            <div class="mb-3">
+                                <label for="inventario-list" class="form-label">Lista de Inventarios Consumidos</label>
+                                <ul>
+                                    @foreach ($selectedInventarios as $id => $item)
+                                        <li>
+                                            {{ $item['articulo'] ?? 'Sin nombre' }} - Cantidad:
+                                            <input type="number" wire:model="selectedInventarios.{{ $id }}.cantidad" min="1" max="{{ $item['stock'] ?? 0 }}">
+                                            <button type="button" class="btn btn-danger btn-sm" wire:click="removeInventario({{ $id }})">Eliminar</button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                            
+
                             <div class="mb-3">
                                 <label for="tarifaSeleccionada" class="form-label">Seleccione Tarifa</label>
                                 <select class="form-control" id="tarifaSeleccionada" wire:model="tarifaSeleccionada">
                                     <option value="">Seleccione una Tarifa Nocturna</option>
                                     @if ($esHorarioNocturno)
-                                        <option value="tarifa_opcion1">Tarifa Opción 1: {{ $selectedAlquiler->habitacion->tarifa_opcion1 ?? 'N/A' }}</option>
-                                        <option value="tarifa_opcion2">Tarifa Opción 2: {{ $selectedAlquiler->habitacion->tarifa_opcion2 ?? 'N/A' }}</option>
-                                        <option value="tarifa_opcion3">Tarifa Opción 3: {{ $selectedAlquiler->habitacion->tarifa_opcion3 ?? 'N/A' }}</option>
-                                        <option value="tarifa_opcion4">Tarifa Opción 4: {{ $selectedAlquiler->habitacion->tarifa_opcion4 ?? 'N/A' }}</option>
+                                        <option value="tarifa_opcion1">Tarifa Opción 1:
+                                            {{ $selectedAlquiler->habitacion->tarifa_opcion1 ?? 'N/A' }}</option>
+                                        <option value="tarifa_opcion2">Tarifa Opción 2:
+                                            {{ $selectedAlquiler->habitacion->tarifa_opcion2 ?? 'N/A' }}</option>
+                                        <option value="tarifa_opcion3">Tarifa Opción 3:
+                                            {{ $selectedAlquiler->habitacion->tarifa_opcion3 ?? 'N/A' }}</option>
+                                        <option value="tarifa_opcion4">Tarifa Opción 4:
+                                            {{ $selectedAlquiler->habitacion->tarifa_opcion4 ?? 'N/A' }}</option>
                                     @else
-                                        
                                     @endif
                                 </select>
                                 @error('tarifaSeleccionada')
                                     <span class="text-danger">{{ $message }}</span>
                                 @enderror
                             </div>
-                            
+
 
                             <div class="mb-3">
                                 <label for="tiempoTranscurrido" class="form-label">Tiempo Transcurrido</label>
@@ -209,9 +216,10 @@
                             </div>
                             <div class="mb-3">
                                 <label for="total" class="form-label">Total</label>
-                                <input type="text" id="total" class="form-control" value="Bs {{ $total }}" readonly>
+                                <input type="text" id="total" class="form-control"
+                                    value="Bs {{ $total }}" readonly>
                             </div>
-                            
+
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -292,81 +300,83 @@
                 </div>
             </div>
         </div>
-<!-- Modal Editar Alquiler -->
-<div wire:ignore.self class="modal fade" id="editAlquilerModal" tabindex="-1" aria-labelledby="editAlquilerModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editAlquilerModalLabel">Editar Alquiler</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <form>
-                    <!-- Tipo Ingreso -->
-                    <div class="mb-3">
-                        <label for="tipoingreso" class="form-label">Tipo Ingreso</label>
-                        <select class="form-control" id="tipoingreso" wire:model="tipoingreso">
-                            <option value="">Seleccione el tipo de ingreso</option>
-                            <option value="A PIE">A PIE</option>
-                            <option value="AUTOMOVIL">AUTOMOVIL</option>
-                            <option value="MOTO">MOTO</option>
-                            <option value="OTRO">OTRO</option>
-                        </select>
-                        @error('tipoingreso')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
+        <!-- Modal Editar Alquiler -->
+        <div wire:ignore.self class="modal fade" id="editAlquilerModal" tabindex="-1"
+            aria-labelledby="editAlquilerModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editAlquilerModalLabel">Editar Alquiler</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
                     </div>
-
-                    <!-- Hora de Entrada -->
-                    <div class="mb-3">
-                        <label for="entrada" class="form-label">Hora de Entrada</label>
-                        <input type="datetime-local" class="form-control" id="entrada" wire:model="entrada">
-                        @error('entrada')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
-                    </div>
-
-                    <!-- Inventarios Consumidos -->
-                    <div class="mb-3">
-                        <label for="inventarios" class="form-label">Inventarios Consumidos</label>
-                        @foreach ($inventarios as $index => $inventario)
-                            <div class="d-flex align-items-center mb-2">
-                                <!-- Checkbox para seleccionar el inventario -->
-                                <input type="checkbox" id="inventario_{{ $inventario->id }}" 
-                                    wire:click="toggleInventario({{ $inventario->id }}, {{ $index }})" 
-                                    class="form-check-input me-2"
-                                    {{ isset($selectedInventarios[$inventario->id]) ? 'checked' : '' }}>
-
-                                <label for="inventario_{{ $inventario->id }}" class="form-label me-3">
-                                    {{ $inventario->articulo }} (Stock: {{ $inventario->stock }})
-                                </label>
-
-                                <!-- Campo de cantidad -->
-                                <input type="number" wire:model="selectedInventarios.{{ $inventario->id }}.cantidad"
-                                    placeholder="Cantidad" min="1" max="{{ $inventario->stock }}"
-                                    class="form-control" style="width: 100px;"
-                                    {{ !isset($selectedInventarios[$inventario->id]) ? 'disabled' : '' }}>
+                    <div class="modal-body">
+                        <form>
+                            <!-- Tipo Ingreso -->
+                            <div class="mb-3">
+                                <label for="tipoingreso" class="form-label">Tipo Ingreso</label>
+                                <select class="form-control" id="tipoingreso" wire:model="tipoingreso">
+                                    <option value="">Seleccione el tipo de ingreso</option>
+                                    <option value="A PIE">A PIE</option>
+                                    <option value="AUTOMOVIL">AUTOMOVIL</option>
+                                    <option value="MOTO">MOTO</option>
+                                    <option value="OTRO">OTRO</option>
+                                </select>
+                                @error('tipoingreso')
+                                    <span class="text-danger">{{ $message }}</span>
+                                @enderror
                             </div>
-                        @endforeach
-                        @error('selectedInventarios.*.cantidad')
-                            <span class="text-danger">{{ $message }}</span>
-                        @enderror
-                    </div>
 
-                    <!-- Total -->
-                    <div class="mb-3">
-                        <label for="total" class="form-label">Total</label>
-                        <input type="number" class="form-control" id="total" wire:model="total" readonly>
+                            <!-- Hora de Entrada -->
+                            <div class="mb-3">
+                                <label for="entrada" class="form-label">Hora de Entrada</label>
+                                <input type="datetime-local" class="form-control" id="entrada"
+                                    wire:model="entrada">
+                                @error('entrada')
+                                    <span class="text-danger">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                            <!-- Inventarios Consumidos -->
+                            <div class="mb-3">
+                                <label for="inventarios" class="form-label">Agregar Inventario</label>
+                                <select id="inventarios" class="form-control" wire:model="selectedInventarioId" wire:change="addInventario">
+                                    <option value="">Seleccione o busque un inventario</option>
+                                    @foreach ($inventarios as $inventario)
+                                        <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock: {{ $inventario->stock }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="inventario-list" class="form-label">Lista de Inventarios Consumidos</label>
+                                <ul>
+                                    @foreach ($selectedInventarios as $id => $item)
+                                    <li>
+                                        {{ $item['articulo'] ?? 'Sin nombre' }} - Cantidad:
+                                        <input type="number" wire:model="selectedInventarios.{{ $id }}.cantidad" min="1" max="{{ $item['stock'] ?? 0 }}">
+                                        <button type="button" class="btn btn-danger btn-sm" wire:click="removeInventario({{ $id }})">Eliminar</button>
+                                    </li>
+                                @endforeach
+                                </ul>
+                            </div>
+                            
+
+                            <!-- Total -->
+                            <div class="mb-3">
+                                <label for="total" class="form-label">Total</label>
+                                <input type="number" class="form-control" id="total" wire:model="total"
+                                    readonly>
+                            </div>
+                        </form>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" wire:click="update">Guardar Cambios</button>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" wire:click="update">Guardar Cambios</button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
 
     </div>
     <script>
@@ -375,14 +385,14 @@
             let modal = new bootstrap.Modal(modalEl);
             modal.show();
         });
-    
+
         window.addEventListener('close-modal', () => {
             let modalEl = document.getElementById('editAlquilerModal');
             let modal = new bootstrap.Modal(modalEl);
             modal.hide();
         });
     </script>
-    
+
     <script>
         window.addEventListener('show-create-modal', () => {
             let modalEl = document.getElementById('createAlquilerModal');

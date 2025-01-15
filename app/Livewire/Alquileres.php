@@ -26,6 +26,7 @@ class Alquileres extends Component
     public $tarifaSeleccionada; // Para almacenar la tarifa seleccionada al momento del pago
 
     public $showCreateModal = false;
+    public $selectedInventarioId; // ID del inventario seleccionado en el combo box
 
     // Renderiza la vista y carga datos necesarios
     public function render()
@@ -401,6 +402,37 @@ public function update()
     $this->resetPage();
 }
 
+public function addInventario()
+{
+    if (!$this->selectedInventarioId) {
+        return;
+    }
+
+    $inventario = Inventario::find($this->selectedInventarioId);
+
+    if (!$inventario) {
+        session()->flash('error', 'Inventario no encontrado.');
+        return;
+    }
+
+    // Verifica que el inventario no esté ya en la lista
+    if (!isset($this->selectedInventarios[$inventario->id])) {
+        $this->selectedInventarios[$inventario->id] = [
+            'id' => $inventario->id,
+            'articulo' => $inventario->articulo ?? 'Sin nombre', // Asegura que 'articulo' exista
+            'cantidad' => 1, // Cantidad inicial
+            'stock' => $inventario->stock ?? 0, // Asegura que 'stock' exista
+        ];
+    }
+
+    $this->selectedInventarioId = null; // Reinicia la selección
+}
+
+
+public function removeInventario($id)
+{
+    unset($this->selectedInventarios[$id]);
+}
 
     
 
