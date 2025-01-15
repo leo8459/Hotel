@@ -99,13 +99,17 @@
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <button class="btn btn-primary btn-sm"
-                                                        wire:click="openPayModal({{ $alquiler->id }})">Pagar
-                                                        Habitación</button>
-                                                    <button class="btn btn-info btn-sm"
-                                                        wire:click="openEditModal({{ $alquiler->id }})">Editar</button>
-                                                    <button class="btn btn-danger btn-sm">Eliminar</button>
+                                                    @if ($alquiler->estado !== 'pagado')
+                                                        <button class="btn btn-primary btn-sm"
+                                                            wire:click="openPayModal({{ $alquiler->id }})">Pagar
+                                                            Habitación</button>
+                                                        <button class="btn btn-info btn-sm"
+                                                            wire:click="openEditModal({{ $alquiler->id }})">Editar</button>
+                                                            <button class="btn btn-danger btn-sm">Eliminar</button>
+                                                    @endif
                                                 </td>
+                                                
+                                                
                                             </tr>
                                         @endforeach
                                     </tbody>
