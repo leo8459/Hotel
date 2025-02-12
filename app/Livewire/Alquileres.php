@@ -26,7 +26,9 @@ class Alquileres extends Component
     public $tarifaSeleccionada; // Para almacenar la tarifa seleccionada al momento del pago
     public $aireInicio; // Hora de inicio del aire acondicionado
     public $aireFin; // Hora de fin del aire acondicionado
-
+    public $totalHoras = 0;
+    public $totalInventario = 0;
+    public $totalGeneral = 0;
 
 
     public $showCreateModal = false;
@@ -61,7 +63,24 @@ class Alquileres extends Component
 
 
 
-
+    public function updateTotals()
+    {
+        // Calcula el total de las horas en base a la diferencia de tiempo y la tarifa
+        $this->totalHoras = $this->calcularHoras(...) ?? 0;
+    
+        // Calcula el total del inventario consumido recorriendo $this->selectedInventarios
+        $this->totalInventario = 0;
+        foreach ($this->selectedInventarios as $item) {
+            // Supongamos que cada artículo tiene un 'precio' en la base de datos
+            $inventario = Inventario::find($item['id']);
+            if ($inventario) {
+                $this->totalInventario += ($inventario->precio * $item['cantidad']);
+            }
+        }
+    
+        // Calculamos el total general
+        $this->totalGeneral = $this->totalHoras + $this->totalInventario;
+    }
     // Abrir el modal de creación
     public function openCreateModal()
     {
@@ -189,89 +208,108 @@ class Alquileres extends Component
     {
         $this->validate([
             'horaSalida' => 'required|date|after_or_equal:selectedAlquiler.entrada',
-            'tipopago' => 'required|string|in:EFECTIVO,QR,TARJETA',
+            'tipopago'   => 'required|string|in:EFECTIVO,QR,TARJETA',
         ]);
     
-        // Parsear las fechas con la zona horaria de La Paz
+        // Parsear fechas con zona horaria de La Paz
         $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
-        $salida = Carbon::parse($this->horaSalida, 'America/La_Paz');
+        $salida  = Carbon::parse($this->horaSalida, 'America/La_Paz');
     
         $habitacion = $this->selectedAlquiler->habitacion;
-    
         if (!$habitacion) {
             session()->flash('error', 'No se encontró la habitación asociada.');
             return;
         }
     
-        $precioTotal = 0;
-    
-        // Calcular tiempo total en minutos
+        // ---------------------------
+        // Cálculo de horas de habitación
+        // ---------------------------
         $diferenciaMinutosTotales = $entrada->diffInMinutes($salida);
+        $minutosPrimeraHora = 75; // 1 hora 15 min
+        $precioHoras = 0;
     
-        // Definir reglas de tiempo
-        $minutosPrimeraHora = 75; // La primera hora incluye hasta 1:15
-    
-        // Calcular precio para la primera hora
         if ($diferenciaMinutosTotales <= $minutosPrimeraHora) {
-            $precioTotal += $habitacion->preciohora;
+            // Solo la primera hora
+            $precioHoras += $habitacion->preciohora;
         } else {
-            // Cobrar la primera hora
-            $precioTotal += $habitacion->preciohora;
+            // Sumar la primera hora
+            $precioHoras += $habitacion->preciohora;
     
-            // Calcular minutos restantes después de la primera hora
+            // Calcular minutos restantes
             $minutosRestantes = $diferenciaMinutosTotales - $minutosPrimeraHora;
     
-            // Calcular horas adicionales (cada 60 minutos cuentan como 1 hora extra)
+            // Horas extra completas
             $horasExtras = intval($minutosRestantes / 60);
-            $precioTotal += $horasExtras * $habitacion->precio_extra;
+            $precioHoras += $horasExtras * $habitacion->precio_extra;
     
-            // Evaluar si los minutos restantes después de las horas completas exceden para otra hora
+            // Si quedan minutos sobrantes, sumamos otra hora extra
             $minutosSobrantes = $minutosRestantes % 60;
             if ($minutosSobrantes > 0) {
-                $precioTotal += $habitacion->precio_extra;
+                $precioHoras += $habitacion->precio_extra;
             }
         }
     
-        // Calcular costo del aire acondicionado
-        $costoAire = $this->calcularCostoAire();
-        $precioTotal += $costoAire;
+        // ---------------------------
+        // Costo aire acondicionado
+        // ---------------------------
+        $costoAire = $this->calcularCostoAire(); 
+        // Este método ya lo tienes definido. Devuelve las horas completas desde aireInicio hasta ahora * 10.
+        
+        // Sumamos a "horas" el costo de aire para que todo sea "costos por uso de la habitación"
+        $this->totalHoras = $precioHoras + $costoAire;
     
-        // Calcular precio del inventario seleccionado
+        // ---------------------------
+        // Cálculo de inventario
+        // ---------------------------
+        $this->totalInventario = 0;
         foreach ($this->selectedInventarios as $item) {
             $inventario = Inventario::find($item['id']);
             if ($inventario) {
-                $precioTotal += $inventario->precio * $item['cantidad'];
-                if ($inventario->stock >= $item['cantidad']) {
-                    $inventario->decrement('stock', $item['cantidad']);
-                } else {
+                // Verificamos stock
+                if ($inventario->stock < $item['cantidad']) {
                     session()->flash('error', "El inventario '{$inventario->articulo}' no tiene suficiente stock.");
                     return;
                 }
+                // Sumamos el precio al total de inventario
+                $this->totalInventario += $inventario->precio * $item['cantidad'];
+    
+                // Descontamos el stock
+                $inventario->decrement('stock', $item['cantidad']);
             }
         }
     
-        // Actualizar el alquiler con los nuevos valores
+        // ---------------------------
+        // Total general
+        // ---------------------------
+        $this->totalGeneral = $this->totalHoras + $this->totalInventario;
+    
+        // Guardamos en la base de datos
         $this->selectedAlquiler->update([
-            'salida' => $this->horaSalida,
-            'horas' => ceil($diferenciaMinutosTotales / 60), // Redondear a la hora más cercana
-            'estado' => 'pagado',
-            'tipopago' => $this->tipopago,
-            'total' => $precioTotal,
-            'tarifa_seleccionada' => $this->tarifaSeleccionada,
+            'salida'             => $this->horaSalida,
+            'horas'              => ceil($diferenciaMinutosTotales / 60),
+            'estado'             => 'pagado',
+            'tipopago'           => $this->tipopago,
+            'total'              => $this->totalGeneral,
+            'tarifa_seleccionada'=> $this->tarifaSeleccionada,
             'inventario_detalle' => json_encode($this->selectedInventarios),
-            'aireacondicionado' => $this->aireacondicionado,
-            'aire_fin' => Carbon::now('America/La_Paz'), // Guardar la hora actual como aire_fin
+            'aireacondicionado'  => $this->aireacondicionado,
+            'aire_fin'           => Carbon::now('America/La_Paz'),
         ]);
     
-        session()->flash('message', "Habitación pagada. Total: $precioTotal.");
+        session()->flash('message', "Habitación pagada. Total: Bs {$this->totalGeneral}.");
     
-        // Cierra el modal y recarga la página
+        // Cierra el modal y recarga
         $this->dispatch('close-modal');
-        $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios', 'aireacondicionado']);
+        $this->reset([
+            'selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada',
+            'selectedInventarios', 'aireacondicionado', 'totalHoras',
+            'totalInventario', 'totalGeneral'
+        ]);
         $this->resetPage();
     
         return redirect()->to(request()->header('Referer'));
     }
+    
     
 
     
@@ -295,52 +333,69 @@ class Alquileres extends Component
     }
     public function calcularTotal()
     {
-        $total = 0;
+        // Esto solamente lo usarías para actualizar en el modal "en vivo"
+        // cuando cambias la hora de salida, agregas inventarios, etc.
     
-        if ($this->selectedAlquiler && $this->horaSalida) {
-            $entrada = Carbon::parse($this->selectedAlquiler->entrada);
-            $salida = Carbon::parse($this->horaSalida);
+        $habitacion = $this->selectedAlquiler?->habitacion;
+        if (!$habitacion || !$this->horaSalida) {
+            // Si no hay habitación o no has seleccionado horaSalida todavía, salimos
+            $this->total = 0;
+            $this->totalHoras = 0;
+            $this->totalInventario = 0;
+            $this->totalGeneral = 0;
+            return 0;
+        }
     
-            $diferenciaMinutosTotales = $entrada->diffInMinutes($salida);
+        // -----------------------------------------
+        // 1) Cálculo del costo por horas
+        // -----------------------------------------
+        $entrada = Carbon::parse($this->selectedAlquiler->entrada);
+        $salida  = Carbon::parse($this->horaSalida);
+        $diferenciaMinutosTotales = $entrada->diffInMinutes($salida);
     
-            // Definir reglas de tiempo
-            $minutosPrimeraHora = 75; // La primera hora incluye hasta 1:15
+        $minutosPrimeraHora = 75;
+        $precioHoras = 0;
     
-            // Calcular precio para la primera hora
-            if ($diferenciaMinutosTotales <= $minutosPrimeraHora) {
-                $total += $this->selectedAlquiler->habitacion->preciohora;
-            } else {
-                // Cobrar la primera hora
-                $total += $this->selectedAlquiler->habitacion->preciohora;
-    
-                // Calcular minutos restantes después de la primera hora
-                $minutosRestantes = $diferenciaMinutosTotales - $minutosPrimeraHora;
-    
-                // Calcular horas adicionales (cada 60 minutos cuentan como 1 hora extra)
-                $horasExtras = intval($minutosRestantes / 60);
-                $total += $horasExtras * $this->selectedAlquiler->habitacion->precio_extra;
-    
-                // Evaluar si los minutos restantes después de las horas completas exceden para otra hora
-                $minutosSobrantes = $minutosRestantes % 60;
-                if ($minutosSobrantes > 0) {
-                    $total += $this->selectedAlquiler->habitacion->precio_extra;
-                }
+        if ($diferenciaMinutosTotales <= $minutosPrimeraHora) {
+            $precioHoras = $habitacion->preciohora;
+        } else {
+            $precioHoras = $habitacion->preciohora;
+            $minutosRestantes = $diferenciaMinutosTotales - $minutosPrimeraHora;
+            $horasExtras = intval($minutosRestantes / 60);
+            $precioHoras += $horasExtras * $habitacion->precio_extra;
+            $minutosSobrantes = $minutosRestantes % 60;
+            if ($minutosSobrantes > 0) {
+                $precioHoras += $habitacion->precio_extra;
             }
         }
     
-        // Calcular precio del inventario seleccionado
+        // Costo aire
+        $costoAire = $this->calcularCostoAire();
+        $this->totalHoras = $precioHoras + $costoAire;
+    
+        // -----------------------------------------
+        // 2) Cálculo de inventario
+        // -----------------------------------------
+        $this->totalInventario = 0;
         foreach ($this->selectedInventarios as $item) {
             $inventario = Inventario::find($item['id']);
             if ($inventario) {
-                $total += $inventario->precio * ($item['cantidad'] ?? 1);
+                $this->totalInventario += $inventario->precio * ($item['cantidad'] ?? 1);
             }
         }
     
-        // Calcular costo del aire acondicionado
-        $total += $this->calcularCostoAire();
+        // -----------------------------------------
+        // 3) Suma total
+        // -----------------------------------------
+        $this->totalGeneral = $this->totalHoras + $this->totalInventario;
     
-        $this->total = $total;
+        // Si quieres mantener "total" como antes
+        // para otros usos, lo igualas a $totalGeneral
+        $this->total = $this->totalGeneral;
+    
+        return $this->totalGeneral;
     }
+    
     
 
 
