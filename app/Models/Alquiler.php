@@ -26,6 +26,8 @@ class Alquiler extends Model
         'estado',
         'aire_inicio',
         'aire_fin',
+        'usuario_id', // Asegúrate de incluir esto
+
 
         
     ];

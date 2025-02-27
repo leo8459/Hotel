@@ -12,6 +12,14 @@
                         <button type="button" class="btn btn-success float-right" wire:click="openCreateModal">
                             Crear Alquiler
                         </button>
+                        <div class="d-flex justify-content-between mb-3">
+    <button class="btn btn-success" wire:click="iniciarTrabajo">Iniciar Trabajo</button>
+    <button class="btn btn-danger" wire:click="finalizarTrabajo">Finalizar Trabajo</button>
+</div>
+
+@if (session()->has('message'))
+    <div class="alert alert-success">{{ session('message') }}</div>
+@endif
 
 
                     </div>

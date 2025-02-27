@@ -32,6 +32,7 @@ return new class extends Migration
 
             $table->foreignId('habitacion_id')->constrained('habitaciones')->onDelete('cascade'); // Relación con habitaciones
             $table->foreignId('inventario_id')->nullable()->constrained('inventarios')->onDelete('cascade'); // Relación con inventarios, nullable
+            $table->foreignId('usuario_id')->nullable()->constrained('users')->onDelete('set null')->after('estado');
 
 
         });

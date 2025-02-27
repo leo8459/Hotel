@@ -8,6 +8,7 @@ use App\Models\Alquiler;
 use App\Models\Habitacion;
 use App\Models\Inventario;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class Alquileres extends Component
 {
@@ -29,6 +30,7 @@ class Alquileres extends Component
     public $totalHoras = 0;
     public $totalInventario = 0;
     public $totalGeneral = 0;
+    public $horaEntradaTrabajo, $horaSalidaTrabajo;
 
 
     public $showCreateModal = false;
@@ -211,7 +213,6 @@ class Alquileres extends Component
             'tipopago'   => 'required|string|in:EFECTIVO,QR,TARJETA',
         ]);
     
-        // Parsear fechas con zona horaria de La Paz
         $entrada = Carbon::parse($this->selectedAlquiler->entrada, 'America/La_Paz');
         $salida  = Carbon::parse($this->horaSalida, 'America/La_Paz');
     
@@ -221,69 +222,28 @@ class Alquileres extends Component
             return;
         }
     
-        // ---------------------------
-        // Cálculo de horas de habitación
-        // ---------------------------
+        // Cálculo de horas y total del pago
         $diferenciaMinutosTotales = $entrada->diffInMinutes($salida);
-        $minutosPrimeraHora = 75; // 1 hora 15 min
-        $precioHoras = 0;
+        $precioHoras = $habitacion->preciohora;
     
-        if ($diferenciaMinutosTotales <= $minutosPrimeraHora) {
-            // Solo la primera hora
-            $precioHoras += $habitacion->preciohora;
-        } else {
-            // Sumar la primera hora
-            $precioHoras += $habitacion->preciohora;
-    
-            // Calcular minutos restantes
-            $minutosRestantes = $diferenciaMinutosTotales - $minutosPrimeraHora;
-    
-            // Horas extra completas
-            $horasExtras = intval($minutosRestantes / 60);
-            $precioHoras += $horasExtras * $habitacion->precio_extra;
-    
-            // Si quedan minutos sobrantes, sumamos otra hora extra
-            $minutosSobrantes = $minutosRestantes % 60;
-            if ($minutosSobrantes > 0) {
-                $precioHoras += $habitacion->precio_extra;
-            }
+        if ($diferenciaMinutosTotales > 75) {
+            $precioHoras += (intval(($diferenciaMinutosTotales - 75) / 60) + 1) * $habitacion->precio_extra;
         }
     
-        // ---------------------------
-        // Costo aire acondicionado
-        // ---------------------------
-        $costoAire = $this->calcularCostoAire(); 
-        // Este método ya lo tienes definido. Devuelve las horas completas desde aireInicio hasta ahora * 10.
-        
-        // Sumamos a "horas" el costo de aire para que todo sea "costos por uso de la habitación"
+        $costoAire = $this->calcularCostoAire();
         $this->totalHoras = $precioHoras + $costoAire;
-    
-        // ---------------------------
-        // Cálculo de inventario
-        // ---------------------------
         $this->totalInventario = 0;
+    
         foreach ($this->selectedInventarios as $item) {
             $inventario = Inventario::find($item['id']);
             if ($inventario) {
-                // Verificamos stock
-                if ($inventario->stock < $item['cantidad']) {
-                    session()->flash('error', "El inventario '{$inventario->articulo}' no tiene suficiente stock.");
-                    return;
-                }
-                // Sumamos el precio al total de inventario
                 $this->totalInventario += $inventario->precio * $item['cantidad'];
-    
-                // Descontamos el stock
                 $inventario->decrement('stock', $item['cantidad']);
             }
         }
     
-        // ---------------------------
-        // Total general
-        // ---------------------------
         $this->totalGeneral = $this->totalHoras + $this->totalInventario;
     
-        // Guardamos en la base de datos
         $this->selectedAlquiler->update([
             'salida'             => $this->horaSalida,
             'horas'              => ceil($diferenciaMinutosTotales / 60),
@@ -294,21 +254,19 @@ class Alquileres extends Component
             'inventario_detalle' => json_encode($this->selectedInventarios),
             'aireacondicionado'  => $this->aireacondicionado,
             'aire_fin'           => Carbon::now('America/La_Paz'),
+            'usuario_id'         => auth()->id(), // ✅ Se asigna el usuario que realizó el cobro
         ]);
     
         session()->flash('message', "Habitación pagada. Total: Bs {$this->totalGeneral}.");
     
-        // Cierra el modal y recarga
         $this->dispatch('close-modal');
-        $this->reset([
-            'selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada',
-            'selectedInventarios', 'aireacondicionado', 'totalHoras',
-            'totalInventario', 'totalGeneral'
-        ]);
+        $this->reset(['selectedAlquiler', 'horaSalida', 'tipopago', 'tarifaSeleccionada', 'selectedInventarios', 'aireacondicionado', 'totalHoras', 'totalInventario', 'totalGeneral']);
         $this->resetPage();
     
         return redirect()->to(request()->header('Referer'));
     }
+    
+    
     
     
 
@@ -525,7 +483,56 @@ class Alquileres extends Component
     return $horasCompletas * $costoPorHora;
 }
 
-    
+public function iniciarTrabajo()
+{
+    $usuario = auth()->user();
+    $usuario->update([
+        'hora_entrada_trabajo' => Carbon::now('America/La_Paz')
+    ]);
+    session()->flash('message', 'Has iniciado tu turno a las ' . Carbon::now('America/La_Paz')->format('H:i:s'));
+}
+
+public function finalizarTrabajo()
+{
+    $usuario = auth()->user();
+    $usuario->update([
+        'hora_salida_trabajo' => Carbon::now('America/La_Paz')
+    ]);
+
+    session()->flash('message', 'Has finalizado tu turno a las ' . Carbon::now('America/La_Paz')->format('H:i:s'));
+    return $this->generarReporte();
+}
+
+public function generarReporte()
+{
+    $usuario = auth()->user();
+
+    if (!$usuario->hora_entrada_trabajo || !$usuario->hora_salida_trabajo) {
+        session()->flash('error', 'No se puede generar el reporte sin un horario válido.');
+        return;
+    }
+
+    $entradaTrabajo = Carbon::parse($usuario->hora_entrada_trabajo);
+    $salidaTrabajo = Carbon::parse($usuario->hora_salida_trabajo);
+
+    $alquileres = Alquiler::where('estado', 'pagado')
+        ->whereBetween('updated_at', [$entradaTrabajo, $salidaTrabajo])
+        ->where('usuario_id', $usuario->id) // Ahora este campo existe en la tabla
+        ->get();
+
+    $totalGenerado = $alquileres->sum('total');
+
+    $pdf = Pdf::loadView('pdf.reporte_turno', compact('usuario', 'alquileres', 'totalGenerado'));
+
+    return response()->streamDownload(
+        fn() => print($pdf->output()),
+        'reporte_turno_' . $usuario->id . '.pdf'
+    );
+}
+
+
+
+
     
 
 

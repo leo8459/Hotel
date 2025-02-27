@@ -32,6 +32,8 @@ class User extends Authenticatable
         'password',
         'city',
         'ci',
+        'hora_entrada_trabajo',
+    'hora_salida_trabajo',
     ];
 
     /**
