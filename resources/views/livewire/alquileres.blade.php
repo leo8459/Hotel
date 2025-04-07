@@ -13,8 +13,8 @@
                             Crear Alquiler
                         </button>
                         <div class="d-flex justify-content-between mb-3">
-    <button class="btn btn-success" wire:click="iniciarTrabajo">Iniciar Trabajo</button>
-    <button class="btn btn-danger" wire:click="finalizarTrabajo">Finalizar Trabajo</button>
+    <button class="btn btn-success" wire:click="iniciarTrabajo">Iniciar Turno</button>
+    <button class="btn btn-danger" wire:click="finalizarTrabajo">Finalizar Turno</button>
 </div>
 
 @if (session()->has('message'))
@@ -41,79 +41,104 @@
                     <div class="d-none d-md-block table-responsive">
                         <!-- Tabla visible en dispositivos medianos y grandes -->
                         <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Tipo Ingreso</th>
-                                    <th>Tipo Pago</th>
-                                    <th>Aire Acondicionado</th>
-                                    <th>Habitación</th>
-                                    <th>Consumo</th>
-                                    <th>Entrada</th>
-                                    <th>Salida</th>
-                                    <th>Tiempo Transcurrido</th>
-                                    <th>Horas</th>
-                                    <th>Tarifa Seleccionada</th>
-                                    <th>Total</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($alquileres as $alquiler)
-                                    <tr>
-                                        <td>{{ $loop->iteration }}</td>
-                                        <td>{{ $alquiler->tipoingreso }}</td>
-                                        <td>{{ $alquiler->tipopago }}</td>
-                                        <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
-                                        <td>{{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}
-                                        </td>
-                                        <td>
-                                            @php
-                                                $detalleInventario = json_decode($alquiler->inventario_detalle, true);
-                                            @endphp
-                                            @if (is_array($detalleInventario) && !empty($detalleInventario))
-                                                <ul>
-                                                    @foreach ($detalleInventario as $item)
-                                                        @php
-                                                            $inventario = \App\Models\Inventario::find($item['id']);
-                                                        @endphp
-                                                        @if ($inventario)
-                                                            <li>{{ $inventario->articulo }}:
-                                                                {{ $item['cantidad'] }}</li>
-                                                        @endif
-                                                    @endforeach
-                                                </ul>
-                                            @else
-                                                Sin consumo registrado
-                                            @endif
-                                        </td>
-                                        <td>{{ $alquiler->entrada }}</td>
-                                        <td>{{ $alquiler->salida }}</td>
-                                        <td>{{ $alquiler->tiempo_transcurrido }}</td>
-                                        <td>{{ $alquiler->horas }}</td>
-                                        <td>{{ $alquiler->tarifa_seleccionada }}</td>
-                                        <td>{{ $alquiler->total }}</td>
-                                        <td>
-                                            <span
-                                                class="badge {{ $alquiler->estado == 'pagado' ? 'bg-success' : 'bg-warning' }}">
-                                                {{ ucfirst($alquiler->estado) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            @if ($alquiler->estado !== 'pagado')
-                                                <button class="btn btn-primary btn-sm"
-                                                    wire:click="openPayModal({{ $alquiler->id }})">Pagar
-                                                    Habitación</button>
-                                                <button class="btn btn-info btn-sm"
-                                                    wire:click="openEditModal({{ $alquiler->id }})">Editar</button>
-                                            @endif
-                                            <button class="btn btn-danger btn-sm">Eliminar</button>
-                                        </td>
+                        <thead>
+    <tr>
+        <th>#</th>
+        <th>Tipo Ingreso</th>
+        <th>Tipo Pago</th>
+        <th>Aire Acond.</th>
+        <th>Habitación</th>
+        <th>Consumo</th>
+        <th>Entrada</th>
+        <th>Salida</th>
+        <th>Tiempo Transcurrido</th>
+        <th>Horas</th>
+        <th>Tarifa Sel.</th>
 
-                                    </tr>
-                                @endforeach
-                            </tbody>
+        <!-- NUEVAS COLUMNAS -->
+        <th>Total Habitación</th>
+        <th>Total Productos</th>
+        
+        <th>Total Final</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+    </tr>
+</thead>
+<tbody>
+@foreach ($alquileres as $alquiler)
+    <tr>
+        <td>{{ $loop->iteration }}</td>
+        <td>{{ $alquiler->tipoingreso }}</td>
+        <td>{{ $alquiler->tipopago }}</td>
+        <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
+        <td>{{ optional($alquiler->habitacion)->habitacion }}</td>
+        <td> <!-- Detalle inventario --> 
+            @php
+                $detalleInventario = json_decode($alquiler->inventario_detalle, true);
+            @endphp
+            @if (is_array($detalleInventario) && !empty($detalleInventario))
+                <ul>
+                    @foreach ($detalleInventario as $item)
+                        @php
+                            $inventario = \App\Models\Inventario::find($item['id']);
+                        @endphp
+                        @if ($inventario)
+                            <li>
+                                {{ $inventario->articulo }}:
+                                {{ $item['cantidad'] }}
+                            </li>
+                        @endif
+                    @endforeach
+                </ul>
+            @else
+                Sin consumo
+            @endif
+        </td>
+        <td>{{ $alquiler->entrada }}</td>
+        <td>{{ $alquiler->salida }}</td>
+        <td>{{ $alquiler->tiempo_transcurrido }}</td>
+        <td>{{ $alquiler->horas }}</td>
+        <td>{{ $alquiler->tarifa_seleccionada }}</td>
+
+        <!-- MOSTRAR LOS NUEVOS CAMPOS CALCULADOS -->
+        <td>{{ $alquiler->total_habitacion }}</td>    <!-- Horas + Aire -->
+        <td>{{ $alquiler->total_inventario }}</td>    <!-- Productos -->
+        
+        <td>{{ $alquiler->total }}</td>               <!-- Suma final -->
+        <td>
+            <span class="badge {{ $alquiler->estado == 'pagado' ? 'bg-success' : 'bg-warning' }}">
+                {{ ucfirst($alquiler->estado) }}
+            </span>
+        </td>
+        <td>
+    @if ($alquiler->estado !== 'pagado')
+        <!-- Botón para pagar -->
+        <button class="btn btn-primary btn-sm"
+                wire:click="openPayModal({{ $alquiler->id }})">
+            Pagar Habitación
+        </button>
+        <button class="btn btn-info btn-sm"
+                wire:click="openEditModal({{ $alquiler->id }})">
+            Editar
+        </button>
+    @else
+        <!-- Nuevo botón para reimprimir boleta -->
+        <button class="btn btn-info btn-sm"
+                wire:click="reimprimirBoleta({{ $alquiler->id }})">
+            Reimprimir Boleta
+        </button>
+    @endif
+
+    <!-- Botón eliminar (si lo tienes) -->
+    <button class="btn btn-danger btn-sm">
+        Eliminar
+    </button>
+</td>
+
+    </tr>
+@endforeach
+</tbody>
+
                         </table>
                     </div>
 
@@ -221,9 +246,10 @@
                             wire:change="addInventario">
                             <option value="">Seleccione o busque un inventario</option>
                             @foreach ($inventarios as $inventario)
-                                <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock:
-                                    {{ $inventario->stock }})
-                                </option>
+                            <option value="{{ $inventario->id }}">
+    {{ $inventario->articulo }} - Precio: {{ $inventario->precio }} (Stock: {{ $inventario->stock }})
+</option>
+
                             @endforeach
                         </select>
                     </div>
@@ -231,18 +257,22 @@
                     <div class="mb-3">
                         <label for="inventario-list" class="form-label">Lista de Inventarios Consumidos</label>
                         <ul>
-                            @foreach ($selectedInventarios as $id => $item)
-                                <li>
-                                    {{ $item['articulo'] ?? 'Sin nombre' }} - Cantidad:
-                                    <input type="number"
-                                           wire:model="selectedInventarios.{{ $id }}.cantidad"
-                                           min="1" 
-                                           max="{{ $item['stock'] ?? 0 }}">
-                                    <button type="button" class="btn btn-danger btn-sm"
-                                            wire:click="removeInventario({{ $id }})">Eliminar
-                                    </button>
-                                </li>
-                            @endforeach
+                        @foreach ($selectedInventarios as $id => $item)
+    <li>
+        {{-- Muestra el artículo y su precio --}}
+        {{ $item['articulo'] ?? 'Sin nombre' }} (Precio: {{ $item['precio'] ?? 0 }}) 
+        - Cantidad:
+        <input type="number"
+               wire:model="selectedInventarios.{{ $id }}.cantidad"
+               min="1" max="{{ $item['stock'] ?? 0 }}">
+        
+        <button type="button" class="btn btn-danger btn-sm"
+                wire:click="removeInventario({{ $id }})">
+            Eliminar
+        </button>
+    </li>
+@endforeach
+
                         </ul>
                     </div>
 
@@ -413,8 +443,10 @@
                                 wire:change="addInventario">
                                 <option value="">Seleccione o busque un inventario</option>
                                 @foreach ($inventarios as $inventario)
-                                    <option value="{{ $inventario->id }}">{{ $inventario->articulo }} (Stock:
-                                        {{ $inventario->stock }})</option>
+                                <option value="{{ $inventario->id }}">
+    {{ $inventario->articulo }} - Precio: {{ $inventario->precio }} (Stock: {{ $inventario->stock }})
+</option>
+
                                 @endforeach
                             </select>
                         </div>
@@ -423,25 +455,36 @@
                             <label for="inventario-list" class="form-label">Lista de Inventarios
                                 Consumidos</label>
                             <ul>
-                                @foreach ($selectedInventarios as $id => $item)
-                                    <li>
-                                        {{ $item['articulo'] ?? 'Sin nombre' }} - Cantidad:
-                                        <input type="number"
-                                            wire:model="selectedInventarios.{{ $id }}.cantidad"
-                                            min="1" max="{{ $item['stock'] ?? 0 }}">
-                                        <button type="button" class="btn btn-danger btn-sm"
-                                            wire:click="removeInventario({{ $id }})">Eliminar</button>
-                                    </li>
-                                @endforeach
+                            @foreach ($selectedInventarios as $id => $item)
+    <li>
+        {{-- Muestra el artículo y su precio --}}
+        {{ $item['articulo'] ?? 'Sin nombre' }} (Precio: {{ $item['precio'] ?? 0 }}) 
+        - Cantidad:
+        <input type="number"
+               wire:model="selectedInventarios.{{ $id }}.cantidad"
+               min="1" max="{{ $item['stock'] ?? 0 }}">
+        
+        <button type="button" class="btn btn-danger btn-sm"
+                wire:click="removeInventario({{ $id }})">
+            Eliminar
+        </button>
+    </li>
+@endforeach
+
                             </ul>
                         </div>
 
 
                         <!-- Total -->
                         <div class="mb-3">
-                            <label for="total" class="form-label">Total</label>
-                            <input type="number" class="form-control" id="total" wire:model="total" readonly>
-                        </div>
+    <label for="totalInventario" class="form-label">Total de Artículos</label>
+    <input type="number"
+           class="form-control"
+           id="totalInventario"
+           wire:model="total"
+           readonly>
+</div>
+
                     </form>
                 </div>
                 <div class="modal-footer">

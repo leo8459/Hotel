@@ -88,5 +88,7 @@ Route::middleware('auth')->group(function () {
 
 
 });
+Route::get('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
+     ->name('boleta.show');
 
 require __DIR__ . '/auth.php';
