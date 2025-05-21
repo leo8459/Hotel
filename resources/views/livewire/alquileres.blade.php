@@ -24,6 +24,22 @@
 
                     </div>
                 </div>
+                <div class="row mb-3">
+    <div class="col-md-3">
+        <label>Fecha Inicio</label>
+        <input type="date" class="form-control" wire:model="fechaInicio">
+    </div>
+    <div class="col-md-3">
+        <label>Fecha Fin</label>
+        <input type="date" class="form-control" wire:model="fechaFin">
+    </div>
+    <div class="col-md-3 align-self-end">
+        <button class="btn btn-success" wire:click="exportarResumenPorFechas">
+            Exportar Resumen
+        </button>
+    </div>
+</div>
+
             </div>
         </section>
 

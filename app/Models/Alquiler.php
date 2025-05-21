@@ -43,4 +43,10 @@ class Alquiler extends Model
     {
         return $this->belongsTo(Inventario::class, 'inventario_id');
     }
+    public function usuario()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usuario_id');
+    }
+    
+
 }

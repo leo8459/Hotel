@@ -9,6 +9,7 @@ use App\Models\Habitacion;
 use App\Models\Inventario;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\User;
 
 class Alquileres extends Component
 {
@@ -31,7 +32,9 @@ class Alquileres extends Component
     public $totalInventario = 0;
     public $totalGeneral = 0;
     public $horaEntradaTrabajo, $horaSalidaTrabajo;
-
+    public $fechaInicio;
+    public $fechaFin;
+    
 
     public $showCreateModal = false;
     public $selectedInventarioId; // ID del inventario seleccionado en el combo box
@@ -678,6 +681,62 @@ public function reimprimirBoleta($alquilerId)
 {
     // Simplemente llamamos a 'generarBoleta'
     return $this->generarBoleta($alquilerId);
+}
+
+public function exportarResumenPorFechas()
+{
+    $this->validate([
+        'fechaInicio' => 'required|date',
+        'fechaFin'    => 'required|date|after_or_equal:fechaInicio',
+    ]);
+
+    $alquileres = Alquiler::with(['habitacion', 'usuario'])
+        ->where('estado', 'pagado')
+        ->whereBetween('updated_at', [$this->fechaInicio, $this->fechaFin])
+        ->get();
+
+    $totalGeneral = $alquileres->sum('total');
+    $resumenProductos = [];
+    $resumenPorHabitacion = [];
+
+    foreach ($alquileres as $alq) {
+        // Por habitación
+        $nombreHab = optional($alq->habitacion)->habitacion ?? 'Sin nombre';
+        if (!isset($resumenPorHabitacion[$nombreHab])) {
+            $resumenPorHabitacion[$nombreHab] = 0;
+        }
+        $resumenPorHabitacion[$nombreHab] += $alq->total;
+
+        // Por productos
+        $detalle = json_decode($alq->inventario_detalle, true) ?? [];
+        foreach ($detalle as $item) {
+            $inv = Inventario::find($item['id']);
+            if (!$inv) continue;
+
+            $nombreProd = $inv->articulo;
+            if (!isset($resumenProductos[$nombreProd])) {
+                $resumenProductos[$nombreProd] = 0;
+            }
+            $resumenProductos[$nombreProd] += $item['cantidad'];
+        }
+    }
+
+    $fechaHoy = now('America/La_Paz')->format('d-m-Y');
+
+    $pdf = Pdf::loadView('pdf.reporte-resumen-alquileres', [
+        'totalGeneral'        => $totalGeneral,
+        'resumenProductos'    => $resumenProductos,
+        'resumenPorHabitacion'=> $resumenPorHabitacion,
+        'alquileres'          => $alquileres,
+        'fechaInicio'         => $this->fechaInicio,
+        'fechaFin'            => $this->fechaFin,
+        'fechaHoy'            => $fechaHoy,
+    ]);
+
+    return response()->streamDownload(
+        fn() => print($pdf->output()),
+        'reporte_resumen_' . $fechaHoy . '.pdf'
+    );
 }
 
 
