@@ -10,7 +10,8 @@ use App\Models\Inventario;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\User;
-
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BoletaAlquiler;
 class Alquileres extends Component
 {
     use WithPagination;
@@ -639,15 +640,13 @@ public function generarReporte()
     );
 }
 
-public function generarBoleta($alquilerId)
+public function generarBoleta($alquilerId, bool $enviarEmail = true)
 {
     $alquiler = Alquiler::findOrFail($alquilerId);
 
-    // Aquí calculas totales, inventario, etc.
-    // y cargas la vista 'pdf.boleta' (o la que tengas).
+    // --- Cálculo de totales e inventario (igual que antes) ---
     $detalleInventario = json_decode($alquiler->inventario_detalle, true) ?? [];
 
-    // Suma de inventarios
     $totalInventario = 0;
     foreach ($detalleInventario as $item) {
         $inv = Inventario::find($item['id']);
@@ -655,22 +654,24 @@ public function generarBoleta($alquilerId)
             $totalInventario += ($inv->precio * $item['cantidad']);
         }
     }
-
-    // Total habitación es:
     $totalHabitacion = $alquiler->total - $totalInventario;
 
-    // Generar PDF
-    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.boleta', [
-        'alquiler'         => $alquiler,
-        'detalleInventario'=> $detalleInventario,
-        'totalInventario'  => $totalInventario,
-        'totalHabitacion'  => $totalHabitacion,
-        'fechaPago'        => $alquiler->updated_at 
-                                ? $alquiler->updated_at->format('d-m-Y H:i') 
-                                : now()->format('d-m-Y H:i'),
+    // --- Generar PDF en memoria ---
+    $pdf = Pdf::loadView('pdf.boleta', [
+        'alquiler'          => $alquiler,
+        'detalleInventario' => $detalleInventario,
+        'totalInventario'   => $totalInventario,
+        'totalHabitacion'   => $totalHabitacion,
+        'fechaPago'         => optional($alquiler->updated_at)->format('d-m-Y H:i'),
     ]);
 
-    // Retornar la descarga (o preview) del PDF
+    // --- Enviar por correo si se pide ---
+    if ($enviarEmail) {
+        Mail::to('hector.fernandez.z@gmail.com')
+            ->send(new BoletaAlquiler($alquiler, $pdf->output()));
+    }
+
+    // --- Descargar / mostrar al usuario como ya lo hacías ---
     return response()->streamDownload(
         fn() => print($pdf->output()),
         "boleta_{$alquiler->id}.pdf"
