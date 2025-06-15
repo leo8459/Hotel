@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AlquilerController;
 use App\Http\Controllers\HabitacionesController;
 use App\Http\Controllers\InventarioController;
+use App\Livewire\HabitacionCambiarEstado;
+use App\Livewire\CrearAlquiler;
 
 /*
 |--------------------------------------------------------------------------
@@ -82,12 +84,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
-    Route::get('/crearalquiler', [AlquilerController::class, 'alquiler']);
-
+ Route::get('/crearalquiler', [AlquilerController::class, 'alquiler'])
+         ->name('crear-alquiler'); 
     //DASHBOARD
     Route::get('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);
 
-
+Route::get('/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
+     ->name('habitacion.estado');
 });
 Route::get('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
      ->name('boleta.show');

@@ -22,6 +22,8 @@ return new class extends Migration
             $table->integer('tarifa_opcion3')->nullable(); // Tarifa opción 3
             $table->integer('tarifa_opcion4')->nullable(); // Tarifa opción 4
             $table->boolean('estado')->default(1); // Estado de la habitación, por defecto 1
+ $table->string('estado_texto', 30)->default('Disponible');
+$table->string('color', 30)->default('bg-success');
 
             $table->timestamps(); // created_at y updated_at
         });

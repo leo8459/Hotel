@@ -9,73 +9,31 @@ class Habitacion extends Model
 {
     use HasFactory;
 
-    /** Nombre explícito de la tabla (opcional si coincide con la convención) */
     protected $table = 'habitaciones';
 
-    /** Campos que se pueden asignar masivamente */
     protected $fillable = [
-        'habitacion',
-        'tipo',
-        'preciohora',
-        'precio_extra',
-        'tarifa_opcion1',
-        'tarifa_opcion2',
-        'tarifa_opcion3',
-        'tarifa_opcion4',
-        'estado',          // 1 = libre, 0 = ocupada
+        'habitacion','tipo',
+        'preciohora','precio_extra',
+        'tarifa_opcion1','tarifa_opcion2','tarifa_opcion3','tarifa_opcion4',
+        'estado','estado_texto','color',
     ];
 
-    /* ================================================================
-     |  Relaciones
-     |================================================================ */
-
-    /**
-     * Una habitación puede tener muchos alquileres.
-     */
+    /* ───── Relaciones ───── */
     public function alquileres()
     {
-        return $this->hasMany(Alquiler::class, 'habitacion_id');
+        return $this->hasMany(Alquiler::class);
     }
 
-    /* ================================================================
-     |  Scopes (consultas reutilizables)
-     |================================================================ */
-
-    /**
-     * Habitaciones libres (estado = 1)
-     */
-    public function scopeLibres($query)
-    {
-        return $query->where('estado', 1);
-    }
-
-    /**
-     * Habitaciones ocupadas (estado = 0)
-     */
-    public function scopeOcupadas($query)
-    {
-        return $query->where('estado', 0);
-    }
-
-    /* ================================================================
-     |  Accesores / Mutadores
-     |================================================================ */
-
-    /**
-     * Devuelve la clase de color Bootstrap según el estado.
-     * bg-success  = verde (libre)
-     * bg-danger   = rojo  (ocupada)
-     */
+    /* ───── Accesores corregidos ───── */
     public function getColorAttribute(): string
     {
-        return $this->estado ? 'bg-success' : 'bg-danger';
+        // Devuelve lo que está en la BD o, si viniera null, un color neutro
+        return $this->attributes['color'] ?? 'bg-secondary text-white';
     }
 
-    /**
-     * Devuelve un texto amigable del estado.
-     */
     public function getEstadoTextoAttribute(): string
     {
-        return $this->estado ? 'Libre' : 'Ocupada';
+        // Devuelve el literal guardado en la BD
+        return $this->attributes['estado_texto'] ?? 'Sin estado';
     }
 }

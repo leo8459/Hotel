@@ -16,12 +16,13 @@ class CrearAlquiler extends Component
 
     public function alquilar(int $id): void
     {
-        // Aquí irá tu lógica de alquiler / modal
         $this->dispatch('abrir-modal-alquiler', id: $id);
     }
 
     public function render()
     {
-        return view('livewire.crearalquiler');
+        return view('livewire.crearalquiler')
+            ->extends('adminlte::page')
+            ->section('content');
     }
 }
