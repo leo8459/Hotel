@@ -349,6 +349,11 @@ return [
             // 'can'  => 'users.index',
             'submenu' => [
                 [
+                    'text' => 'Alquilar Habitacion',
+                    'url' => 'crearalquiler',
+                    'icon' => 'fas fa-user',
+                ],
+                [
                     'text' => 'Vista alquiler',
                     'url' => 'alquileres',
                     'icon' => 'fas fa-user',

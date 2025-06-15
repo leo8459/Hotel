@@ -82,6 +82,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
+    Route::get('/crearalquiler', [AlquilerController::class, 'alquiler']);
 
     //DASHBOARD
     Route::get('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);

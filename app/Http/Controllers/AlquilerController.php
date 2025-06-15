@@ -10,4 +10,8 @@ class AlquilerController extends Controller
     {
         return view('alquileres.alquilere');
     }
+    public function alquiler ()
+    {
+        return view('alquileres.crearalquiler');
+    }
 }
