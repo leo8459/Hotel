@@ -1,6 +1,6 @@
 <div>
     <div class="container py-4">
-        <h2 class="fw-bold mb-4 text-primary">Estado de Habitaciones</h2>
+        <h2 class="fw-bold mb-4 text-secondary">HABITACIONES</h2>
 
         @if (session()->has('estadoActualizado'))
             <div class="alert alert-success">{{ session('estadoActualizado') }}</div>
@@ -50,7 +50,16 @@
                                class="btn btn-outline-primary btn-sm fw-bold">
                                 Estado
                             </a>
+                            
                         </div>
+                        <div class="hotel-footer bg-light text-center py-2">
+    {{-- reemplazar "Estado" por "Alquilar" --}}
+    <a href="{{ route('alquiler.crear', $hab->id) }}"
+       class="btn btn-outline-light text-dark btn-sm fw-bold">
+        Alquilar
+    </a>
+</div>
+
                     </div>
                 </div>
             @endforeach

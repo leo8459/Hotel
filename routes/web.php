@@ -11,6 +11,7 @@ use App\Http\Controllers\HabitacionesController;
 use App\Http\Controllers\InventarioController;
 use App\Livewire\HabitacionCambiarEstado;
 use App\Livewire\CrearAlquiler;
+use App\Livewire\AlquilerCrear;      // ←  Añade esta línea
 
 /*
 |--------------------------------------------------------------------------
@@ -91,6 +92,11 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
      ->name('habitacion.estado');
+
+
+
+     Route::get('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
+         ->name('alquiler.crear');
 });
 Route::get('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
      ->name('boleta.show');
