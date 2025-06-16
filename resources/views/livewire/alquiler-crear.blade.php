@@ -23,20 +23,7 @@
                 @error('entrada') <small class="text-danger">{{ $message }}</small> @enderror
             </div>
 
-            {{-- Habitación --}}
-            <div class="mb-3">
-                <label class="form-label">Habitación</label>
-                <select wire:model="habitacion_id" class="form-select">
-                    <option value="">Seleccione una habitación</option>
-                    @foreach($habitacionesLibres as $h)
-                        <option value="{{ $h->id }}">
-                            {{ $h->habitacion }} (Bs {{ number_format($h->preciohora,2) }}/h)
-                        </option>
-                    @endforeach
-                </select>
-                @error('habitacion_id') <small class="text-danger">{{ $message }}</small> @enderror
-            </div>
-
+          
             {{-- Aire acondicionado --}}
             <div class="form-check form-switch mb-4">
                 <input class="form-check-input" type="checkbox" role="switch" id="aire"
