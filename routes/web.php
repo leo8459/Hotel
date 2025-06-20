@@ -12,7 +12,8 @@ use App\Http\Controllers\InventarioController;
 use App\Livewire\HabitacionCambiarEstado;
 use App\Livewire\CrearAlquiler;
 use App\Livewire\AlquilerCrear;      // ←  Añade esta línea
-   use App\Livewire\Editaralquiler;
+use App\Livewire\Editaralquiler;
+use App\Livewire\Pagaralquiler;
 
 /*
 |--------------------------------------------------------------------------
@@ -89,9 +90,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/crearalquiler', [AlquilerController::class, 'alquiler'])
         ->name('crear-alquiler');
 
-Route::get('/editaralquiler/{alquiler}', Editaralquiler::class)
-    ->name('editar-alquiler');
-
+    Route::get('/editaralquiler/{alquiler}', Editaralquiler::class)
+        ->name('editar-alquiler');
+Route::get('/pagaralquiler/{alquiler}', Pagaralquiler::class)
+        ->name('pagar-alquiler');
 
     //DASHBOARD
     Route::get('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);

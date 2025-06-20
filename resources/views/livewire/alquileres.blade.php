@@ -88,29 +88,31 @@
                                         <td>{{ $alquiler->tipopago }}</td>
                                         <td>{{ $alquiler->aireacondicionado ? 'Sí' : 'No' }}</td>
                                         <td>{{ optional($alquiler->habitacion)->habitacion }}</td>
-                                       <td> <!-- Detalle inventario -->
-    @php
-        // Devuelve un array asociativo: [inventario_id => ['articulo'=>..., 'precio'=>..., 'cantidad'=>...], ...]
-        $detalleInventario = json_decode($alquiler->inventario_detalle, true);
-    @endphp
+                                        <td> <!-- Detalle inventario -->
+                                            @php
+                                                // Devuelve un array asociativo: [inventario_id => ['articulo'=>..., 'precio'=>..., 'cantidad'=>...], ...]
+                                                $detalleInventario = json_decode($alquiler->inventario_detalle, true);
+                                            @endphp
 
-    @if (is_array($detalleInventario) && !empty($detalleInventario))
-        <ul class="mb-0">
-            @foreach ($detalleInventario as $inventarioId => $item)
-                @php
-                    // Intenta traer el nombre actualizado desde la BD; si no existe, usa el que viene en el JSON
-                    $inventario = \App\Models\Inventario::find($inventarioId);
-                    $nombreArticulo = $inventario?->articulo ?? ($item['articulo'] ?? 'Artículo sin nombre');
-                @endphp
-                <li>
-                    {{ $nombreArticulo }}: {{ $item['cantidad'] }}
-                </li>
-            @endforeach
-        </ul>
-    @else
-        Sin consumo
-    @endif
-</td>
+                                            @if (is_array($detalleInventario) && !empty($detalleInventario))
+                                                <ul class="mb-0">
+                                                    @foreach ($detalleInventario as $inventarioId => $item)
+                                                        @php
+                                                            // Intenta traer el nombre actualizado desde la BD; si no existe, usa el que viene en el JSON
+                                                            $inventario = \App\Models\Inventario::find($inventarioId);
+                                                            $nombreArticulo =
+                                                                $inventario?->articulo ??
+                                                                ($item['articulo'] ?? 'Artículo sin nombre');
+                                                        @endphp
+                                                        <li>
+                                                            {{ $nombreArticulo }}: {{ $item['cantidad'] }}
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                Sin consumo
+                                            @endif
+                                        </td>
 
                                         <td>{{ $alquiler->entrada }}</td>
                                         <td>{{ $alquiler->salida }}</td>
@@ -175,28 +177,30 @@
                                         <strong>Habitación:</strong>
                                         {{ $alquiler->habitacion ? $alquiler->habitacion->habitacion : 'Sin asignar' }}<br>
                                         <strong>Consumo:</strong>
-                                      {{-- Dentro del <p class="card-text"> Consumo: --}}
-@php
-    $detalleInventario = json_decode($alquiler->inventario_detalle, true);
-@endphp
+                                        {{-- Dentro del <p class="card-text"> Consumo: --}}
+                                        @php
+                                            $detalleInventario = json_decode($alquiler->inventario_detalle, true);
+                                        @endphp
 
-@if (is_array($detalleInventario) && !empty($detalleInventario))
-    <ul>
-        @foreach ($detalleInventario as $inventarioId => $item)
-            @php
-                // En registros nuevos $item['id'] existe; en los viejos usamos la clave
-                $id = $item['id'] ?? $inventarioId;
+                                        @if (is_array($detalleInventario) && !empty($detalleInventario))
+                                            <ul>
+                                                @foreach ($detalleInventario as $inventarioId => $item)
+                                                    @php
+                                                        // En registros nuevos $item['id'] existe; en los viejos usamos la clave
+                                                        $id = $item['id'] ?? $inventarioId;
 
-                $inventario = \App\Models\Inventario::find($id);
-                $nombre     = $inventario?->articulo ?? ($item['articulo'] ?? 'Artículo sin nombre');
-                $cantidad   = $item['cantidad'] ?? 0;
-            @endphp
-            <li>{{ $nombre }}: {{ $cantidad }}</li>
-        @endforeach
-    </ul>
-@else
-    Sin consumo registrado
-@endif
+                                                        $inventario = \App\Models\Inventario::find($id);
+                                                        $nombre =
+                                                            $inventario?->articulo ??
+                                                            ($item['articulo'] ?? 'Artículo sin nombre');
+                                                        $cantidad = $item['cantidad'] ?? 0;
+                                                    @endphp
+                                                    <li>{{ $nombre }}: {{ $cantidad }}</li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            Sin consumo registrado
+                                        @endif
 
                                         <br> <strong>Entrada:</strong> {{ $alquiler->entrada }}<br>
                                         <strong>Salida:</strong> {{ $alquiler->salida }}<br>
