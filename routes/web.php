@@ -12,6 +12,7 @@ use App\Http\Controllers\InventarioController;
 use App\Livewire\HabitacionCambiarEstado;
 use App\Livewire\CrearAlquiler;
 use App\Livewire\AlquilerCrear;      // ←  Añade esta línea
+   use App\Livewire\Editaralquiler;
 
 /*
 |--------------------------------------------------------------------------
@@ -85,20 +86,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
- Route::get('/crearalquiler', [AlquilerController::class, 'alquiler'])
-         ->name('crear-alquiler'); 
+    Route::get('/crearalquiler', [AlquilerController::class, 'alquiler'])
+        ->name('crear-alquiler');
+
+Route::get('/editaralquiler/{alquiler}', Editaralquiler::class)
+    ->name('editar-alquiler');
+
+
     //DASHBOARD
     Route::get('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);
 
-Route::get('/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
-     ->name('habitacion.estado');
+    Route::get('/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
+        ->name('habitacion.estado');
 
 
 
-     Route::get('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
-         ->name('alquiler.crear');
+    Route::get('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
+        ->name('alquiler.crear');
 });
 Route::get('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
-     ->name('boleta.show');
+    ->name('boleta.show');
 
 require __DIR__ . '/auth.php';

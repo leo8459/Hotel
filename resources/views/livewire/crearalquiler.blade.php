@@ -18,6 +18,13 @@
                         default         => 'bg-light text-secondary',
                     };
                 @endphp
+                @php
+    $alquiler = \App\Models\Alquiler::where('habitacion_id', $hab->id)
+                ->where('estado', 'alquilado')
+                ->latest()
+                ->first();
+@endphp
+
 
                 <div class="col-12 col-sm-6 col-lg-3">
                     <div wire:click="alquilar({{ $hab->id }})"
@@ -58,6 +65,14 @@
        class="btn btn-outline-light text-dark btn-sm fw-bold">
         Alquilar
     </a>
+     {{-- Nuevo botón para editar alquiler --}}
+@if ($alquiler)
+    <a href="{{ route('editar-alquiler', $alquiler->id) }}"
+       class="btn btn-outline-warning btn-sm fw-bold mt-1">
+        Editar alquiler
+    </a>
+@endif
+
 </div>
 
                     </div>
