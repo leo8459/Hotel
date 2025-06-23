@@ -8,11 +8,11 @@ use App\Models\Alquiler;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Livewire\WithPagination;
-
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReporteTurno;
 use App\Models\Inventario;
 use Carbon\Carbon;
 use App\Models\User;
-use Illuminate\Support\Facades\Mail;
 use App\Mail\BoletaAlquiler;
 class CrearAlquiler extends Component
 {
@@ -53,31 +53,39 @@ class CrearAlquiler extends Component
     }
 
     public function generarReporte()
-    {
-        $usuario = auth()->user();
+{
+    $usuario = auth()->user();
 
-        if (!$usuario->hora_entrada_trabajo || !$usuario->hora_salida_trabajo) {
-            session()->flash('error', 'No se puede generar el reporte sin un horario válido.');
-            return;
-        }
-
-        $entradaTrabajo = Carbon::parse($usuario->hora_entrada_trabajo);
-        $salidaTrabajo = Carbon::parse($usuario->hora_salida_trabajo);
-
-        $alquileres = Alquiler::where('estado', 'pagado')
-            ->whereBetween('updated_at', [$entradaTrabajo, $salidaTrabajo])
-            ->where('usuario_id', $usuario->id)
-            ->get();
-
-        $totalGenerado = $alquileres->sum('total');
-
-        $pdf = Pdf::loadView('pdf.reporte_turno', compact('usuario', 'alquileres', 'totalGenerado'));
-
-        return response()->streamDownload(
-            fn() => print($pdf->output()),
-            'reporte_turno_' . $usuario->id . '.pdf'
-        );
+    if (!$usuario->hora_entrada_trabajo || !$usuario->hora_salida_trabajo) {
+        session()->flash('error', 'No se puede generar el reporte sin un horario válido.');
+        return;
     }
+
+    $entradaTrabajo = Carbon::parse($usuario->hora_entrada_trabajo);
+    $salidaTrabajo = Carbon::parse($usuario->hora_salida_trabajo);
+
+    $alquileres = Alquiler::where('estado', 'pagado')
+        ->whereBetween('updated_at', [$entradaTrabajo, $salidaTrabajo])
+        ->where('usuario_id', $usuario->id)
+        ->get();
+
+    $totalGenerado = $alquileres->sum('total');
+
+    $pdf = Pdf::loadView('pdf.reporte_turno', compact('usuario', 'alquileres', 'totalGenerado'));
+
+    $nombreArchivo = 'reporte_turno_' . $usuario->id . '.pdf';
+    $pdfContent = $pdf->output();
+
+    // ENVIAR CORREO
+    Mail::to('hector.fernandez.z@gmail.com')
+        ->send(new ReporteTurno($pdfContent, $nombreArchivo));
+
+    // DEVOLVER DESCARGA TAMBIÉN
+    return response()->streamDownload(
+        fn() => print($pdfContent),
+        $nombreArchivo
+    );
+}
 
     public function render()
     {
