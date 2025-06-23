@@ -10,14 +10,15 @@
             @foreach ($habitaciones as $hab)
                 @php
                     $badgeClass = match ($hab->estado_texto) {
-                        'Disponible' => 'bg-light text-success',
-                        'En uso' => 'bg-light text-danger',
-                        'Pagado' => 'bg-light text-primary',
-                        'En limpieza' => 'bg-light text-warning',
-                        'Mantenimiento' => 'bg-light text-secondary',
-                        default => 'bg-light text-secondary',
+                        'Disponible' => 'bg-success text-white', // verde
+                        'En uso' => 'bg-danger text-white', // rojo
+                        'Pagado' => 'bg-warning text-dark', // amarillo
+                        'En limpieza' => 'bg-primary text-white', // azul
+                        'Mantenimiento' => 'bg-secondary text-white', // plomo
+                        default => 'bg-light text-dark',
                     };
                 @endphp
+
                 @php
                     $alquiler = \App\Models\Alquiler::where('habitacion_id', $hab->id)
                         ->where('estado', 'alquilado')
