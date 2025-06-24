@@ -382,6 +382,12 @@ return [
 
             'icon' => 'fas fa-user',
         ],
+          [
+            'text' => 'Eventos',
+            'url' => 'evento',
+
+            'icon' => 'fas fa-user',
+        ],
     ],
 
     /*

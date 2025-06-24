@@ -7,6 +7,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleHasPermissionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AlquilerController;
+use App\Http\Controllers\EventoController;
 use App\Http\Controllers\HabitacionesController;
 use App\Http\Controllers\InventarioController;
 use App\Livewire\HabitacionCambiarEstado;
@@ -83,6 +84,7 @@ Route::middleware('auth')->group(function () {
 
 
 
+    Route::get('/evento', [EventoController::class, 'obtenereventos']);
 
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
