@@ -8,6 +8,9 @@ use App\Models\Inventario;
 use App\Models\Habitacion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BoletaAlquiler;
 
 class Pagaralquiler extends Component
 {
@@ -108,22 +111,32 @@ class Pagaralquiler extends Component
     }
 
     // ---------- Pagar ----------
-   public function pay()
+  public function pay()
 {
     $this->validate([
         'tipopago'   => 'required|in:EFECTIVO,QR,TARJETA',
         'horaSalida' => 'required|date',
     ]);
 
-    DB::transaction(function () {
-        // --- variables y cálculos (igual que antes) ---
-        $salida      = Carbon::parse($this->horaSalida, 'America/La_Paz');
-        $entrada     = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
-        $habitacion  = $this->alquiler->habitacion;   // <- la instancia
+    $pdf = null; // Variable para guardar PDF generado
 
-        /* … cálculo de $this->totalHoras / Inventario / $this->totalGeneral … */
+    DB::transaction(function () use (&$pdf) {
+        $salida     = Carbon::parse($this->horaSalida, 'America/La_Paz');
+        $entrada    = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
+        $habitacion = $this->alquiler->habitacion;
 
-        // --- Actualizar ALQUILER ---
+        $this->recalcularTotales();
+
+        // Descontar stock
+        foreach ($this->selectedInventarios as $item) {
+            $inv = Inventario::find($item['id']);
+            if ($inv) {
+                $inv->stock = max(0, $inv->stock - $item['cantidad']);
+                $inv->save();
+            }
+        }
+
+        // Actualizar alquiler
         $this->alquiler->update([
             'salida'             => $salida,
             'horas'              => ceil($entrada->diffInMinutes($salida) / 60),
@@ -134,22 +147,45 @@ class Pagaralquiler extends Component
             'usuario_id'         => auth()->id(),
         ]);
 
-        // --- Actualizar HABITACIÓN ---
-        // Ajusta estos campos a tu propia convención (color opcional)
+        // Actualizar habitación
         $habitacion->update([
-            'estado'       => 1,                // 1 = disponible nuevamente (opcional)
-            'estado_texto' => 'Pagado',         // <-- texto que necesitas
-            'color'        => 'bg-info',        // o cualquier color que uses
+            'estado'       => 1,
+            'estado_texto' => 'Pagado',
+            'color'        => 'bg-info',
         ]);
+
+        // Generar PDF
+        $detalleInventario = $this->selectedInventarios;
+        $totalInventario   = $this->totalInventario;
+        $totalHabitacion   = $this->totalHoras;
+        $fechaPago         = now('America/La_Paz')->format('d-m-Y H:i');
+        $alquiler          = $this->alquiler;
+
+        $pdf = Pdf::loadView('pdf.boleta', compact(
+            'alquiler', 'detalleInventario', 'totalInventario', 'totalHabitacion', 'fechaPago'
+        ));
+
+        // Enviar por correo
+        $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
+        Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
     });
 
     session()->flash(
         'message',
-        'Pago registrado correctamente (Bs ' . $this->totalGeneral . ').'
+        'Pago registrado correctamente (Bs ' . $this->totalGeneral . '). Se envió al correo y se descargó la boleta.'
     );
 
-    return redirect()->route('crear-alquiler');
+    // Descargar el PDF después del pago
+    return response()->streamDownload(
+        fn() => print($pdf->output()),
+        "boleta_{$this->alquiler->id}.pdf"
+    );
+        return redirect()->route('crear-alquiler');
+
 }
+
+
+
 
 
     // ---------- Helpers ----------
