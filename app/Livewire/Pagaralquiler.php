@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BoletaAlquiler;
+use App\Models\Eventos;
 
 class Pagaralquiler extends Component
 {
@@ -111,14 +112,14 @@ class Pagaralquiler extends Component
     }
 
     // ---------- Pagar ----------
-  public function pay()
+public function pay()
 {
     $this->validate([
         'tipopago'   => 'required|in:EFECTIVO,QR,TARJETA',
         'horaSalida' => 'required|date',
     ]);
 
-    $pdf = null; // Variable para guardar PDF generado
+    $pdf = null; // PDF generado
 
     DB::transaction(function () use (&$pdf) {
         $salida     = Carbon::parse($this->horaSalida, 'America/La_Paz');
@@ -127,16 +128,33 @@ class Pagaralquiler extends Component
 
         $this->recalcularTotales();
 
-        // Descontar stock
+        // Descontar stock y crear eventos por cada producto
         foreach ($this->selectedInventarios as $item) {
             $inv = Inventario::find($item['id']);
             if ($inv) {
-                $inv->stock = max(0, $inv->stock - $item['cantidad']);
+                $cantidadVendida = $item['cantidad'];
+                $precioUnitario  = $item['precio'];
+                $totalVendido    = $cantidadVendida * $precioUnitario;
+
+                // Descontar del inventario
+                $inv->stock = max(0, $inv->stock - $cantidadVendida);
                 $inv->save();
+
+                // Crear evento de venta
+                \App\Models\Eventos::create([
+                    'articulo'        => $inv->articulo,
+                    'precio'          => 0,
+                    'stock'           => 0,
+                    'vendido'         => $cantidadVendida,
+                    'precio_vendido'  => $totalVendido,
+                    'habitacion_id'   => $this->alquiler->habitacion_id,
+                    'inventario_id'   => $inv->id,
+                    'usuario_id'      => auth()->id(),
+                ]);
             }
         }
 
-        // Actualizar alquiler
+        // Actualizar el alquiler
         $this->alquiler->update([
             'salida'             => $salida,
             'horas'              => ceil($entrada->diffInMinutes($salida) / 60),
@@ -166,7 +184,7 @@ class Pagaralquiler extends Component
         ));
 
         // Enviar por correo
-        $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
+        $correoDestino = env('MAIL_RECEIVER', 'backup@correo.com');
         Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
     });
 
@@ -180,9 +198,8 @@ class Pagaralquiler extends Component
         fn() => print($pdf->output()),
         "boleta_{$this->alquiler->id}.pdf"
     );
-        return redirect()->route('crear-alquiler');
-
 }
+
 
 
 
