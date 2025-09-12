@@ -184,7 +184,7 @@ public function pay()
         ));
 
         // Enviar por correo
-        $correoDestino = env('MAIL_RECEIVER', 'backup@correo.com');
+        $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
         Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
     });
 

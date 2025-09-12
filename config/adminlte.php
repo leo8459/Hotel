@@ -383,7 +383,7 @@ return [
             'icon' => 'fas fa-user',
         ],
           [
-            'text' => 'Eventos',
+            'text' => 'Inventario movimientos',
             'url' => 'evento',
 
             'icon' => 'fas fa-user',

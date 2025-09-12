@@ -86,7 +86,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/evento', [EventoController::class, 'obtenereventos']);
 
+    Route::post('/evento', [EventoController::class, 'obtenereventos']);
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
+        Route::post('/alquileres', [AlquilerController::class, 'obteneralquileres']);
+
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
     Route::get('/crearalquiler', [AlquilerController::class, 'alquiler'])
@@ -107,8 +110,31 @@ Route::get('/pagaralquiler/{alquiler}', Pagaralquiler::class)
 
     Route::get('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
         ->name('alquiler.crear');
+        
+
+         Route::post('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
+    Route::post('/inventarios', [InventarioController::class, 'obtenerinventario']);
+    Route::post('/crearalquiler', [AlquilerController::class, 'alquiler'])
+        ->name('crear-alquiler');
+
+    Route::post('/editaralquiler/{alquiler}', Editaralquiler::class)
+        ->name('editar-alquiler');
+Route::post('/pagaralquiler/{alquiler}', Pagaralquiler::class)
+        ->name('pagar-alquiler');
+
+    //DASHBOARD
+    Route::post('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);
+
+    Route::post('/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
+        ->name('habitacion.estado');
+
+
+
+    Route::post('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
+        ->name('alquiler.crear');
 });
 Route::get('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
     ->name('boleta.show');
-
+Route::post('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
+    ->name('boleta.show');
 require __DIR__ . '/auth.php';

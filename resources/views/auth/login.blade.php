@@ -103,9 +103,9 @@
             transform: translateY(-3px);
         }
 
-        .g-recaptcha {
+        /* .g-recaptcha {
             margin: 20px 0;
-        }
+        } */
 
         /* Responsividad */
         @media (max-width: 768px) {
@@ -146,7 +146,7 @@
                     <input type="password" name="password" id="password" placeholder="Password" required>
                     <span class="toggle-password" onclick="togglePasswordVisibility()">👁️</span>
                 </div>
-                <div class="g-recaptcha" data-sitekey="6Leg8LEqAAAAAIl35EcAbLmLidB3fDsrzgTQv-Fl"></div>
+                <!-- <div class="g-recaptcha" data-sitekey="6Leg8LEqAAAAAIl35EcAbLmLidB3fDsrzgTQv-Fl"></div> -->
                 <button type="submit">INGRESAR</button>
             </form>
         </div>
@@ -164,14 +164,14 @@
             toggleIcon.textContent = '👁️'; // Cambia al icono de mostrar
         }
     }
-        const loginForm = document.getElementById('loginForm');
-        loginForm.addEventListener('submit', function(event) {
-            const recaptchaResponse = document.querySelector('.g-recaptcha-response').value;
-            if (!recaptchaResponse) {
-                event.preventDefault();
-                alert("Por favor completa el Captcha.");
-            }
-        });
+        // const loginForm = document.getElementById('loginForm');
+        // loginForm.addEventListener('submit', function(event) {
+        //     const recaptchaResponse = document.querySelector('.g-recaptcha-response').value;
+        //     if (!recaptchaResponse) {
+        //         event.preventDefault();
+        //         alert("Por favor completa el Captcha.");
+        //     }
+        // });
     </script>
 </body>
 </html>
