@@ -8,40 +8,37 @@ use Illuminate\Support\Facades\DB;
 
 class Dashboardgeneral extends Component
 {
-    public $habitacionesAlquiladas = [];
-    public $habitacionesLibres = [];
+    // Listas por estado
+    public $enUso = [];
+    public $disponibles = [];
+    public $enLimpieza = [];
+    public $mantenimiento = [];
+    public $pagado = [];
+
+    // Métrica
     public $totalGenerado = 0;
 
     public function mount()
     {
-        $this->habitacionesAlquiladas = $this->getHabitacionesAlquiladas();
-        $this->habitacionesLibres = $this->getHabitacionesLibres();
+        // Cargar estados por texto (según tu modelo Habitacion.estado_texto)
+        $this->enUso       = $this->getByEstadoTexto('En uso');
+        $this->disponibles = $this->getByEstadoTexto('Disponible');
+        $this->enLimpieza  = $this->getByEstadoTexto('En limpieza');
+        $this->mantenimiento = $this->getByEstadoTexto('Mantenimiento');
+        $this->pagado      = $this->getByEstadoTexto('Pagado');
+
+        // Total generado por alquileres pagados
         $this->totalGenerado = $this->getTotalGenerado();
     }
 
     /**
-     * Obtiene las habitaciones alquiladas.
+     * Retorna habitaciones por estado_texto.
      */
-    private function getHabitacionesAlquiladas()
+    private function getByEstadoTexto(string $estadoTexto)
     {
-        return Habitacion::join('alquiler', 'habitaciones.id', '=', 'alquiler.habitacion_id')
-            ->where('alquiler.estado', 'alquilado')
-            ->select('habitaciones.*')
+        return Habitacion::where('estado_texto', $estadoTexto)
+            ->orderBy('habitacion')
             ->get();
-    }
-
-    /**
-     * Obtiene las habitaciones libres.
-     */
-    private function getHabitacionesLibres()
-    {
-        return Habitacion::leftJoin('alquiler', function ($join) {
-            $join->on('habitaciones.id', '=', 'alquiler.habitacion_id')
-                ->where('alquiler.estado', 'alquilado');
-        })
-        ->whereNull('alquiler.habitacion_id')
-        ->select('habitaciones.*')
-        ->get();
     }
 
     /**
@@ -57,9 +54,12 @@ class Dashboardgeneral extends Component
     public function render()
     {
         return view('livewire.dashboardgeneral', [
-            'habitacionesAlquiladas' => $this->habitacionesAlquiladas,
-            'habitacionesLibres' => $this->habitacionesLibres,
-            'totalGenerado' => $this->totalGenerado,
+            'enUso'        => $this->enUso,
+            'disponibles'  => $this->disponibles,
+            'enLimpieza'   => $this->enLimpieza,
+            'mantenimiento'=> $this->mantenimiento,
+            'pagado'       => $this->pagado,
+            'totalGenerado'=> $this->totalGenerado,
         ]);
     }
 }

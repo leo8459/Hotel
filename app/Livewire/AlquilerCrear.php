@@ -16,7 +16,7 @@ class AlquilerCrear extends Component
     public string  $entrada;          // datetime-local
     public ?int    $habitacion_id = null;
 
-    public array $tiposIngreso = ['Auto', 'Peatón', 'Reservación'];
+    public array $tiposIngreso = ['Auto', 'Peatón', 'Reservación', 'Moto'];
 
     /* ─── Ciclo de vida ─── */
     public function mount(?Habitacion $habitacion = null): void

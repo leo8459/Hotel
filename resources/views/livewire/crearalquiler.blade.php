@@ -37,6 +37,8 @@
                         ->where('estado', 'alquilado')
                         ->latest()
                         ->first();
+
+                    $bloqueado = in_array($hab->estado_texto, ['En uso', 'En limpieza', 'Mantenimiento', 'Pagado']);
                 @endphp
 
                 <div class="col-12 col-sm-6 col-lg-3">
@@ -56,7 +58,7 @@
                                 <div><i class="bi bi-cash-coin me-1"></i>Extra: Bs {{ number_format($hab->precio_extra, 2) }}</div>
                                 @if ($hab->tarifa_opcion1)
                                     <span class="badge bg-warning text-dark mt-1 d-inline-block">
-                                        Opción 1: Bs {{ number_format($hab->tarifa_opcion1, 2) }}
+                                        Tarifario nocturno: Bs {{ number_format($hab->tarifa_opcion1, 2) }}
                                     </span>
                                 @endif
                             </div>
@@ -69,16 +71,32 @@
                         </div>
 
                         <div class="hotel-footer bg-light text-center py-2">
-                            <a href="{{ route('alquiler.crear', $hab->id) }}" class="btn btn-outline-light text-dark btn-sm fw-bold">
-                                Alquilar
-                            </a>
+                            @if (!$bloqueado)
+                                <a href="{{ route('alquiler.crear', $hab->id) }}" class="btn btn-outline-light text-dark btn-sm fw-bold">
+                                    Alquilar
+                                </a>
+                            @else
+                                <button class="btn btn-outline-light text-muted btn-sm fw-bold" disabled>
+                                    No disponible
+                                </button>
+                            @endif
+
                             @if ($alquiler)
                                 <a href="{{ route('editar-alquiler', $alquiler->id) }}" class="btn btn-outline-warning btn-sm fw-bold mt-1">
-                                    Editar alquiler
+                                    Añadir Producto
                                 </a>
                                 <a href="{{ route('pagar-alquiler', $alquiler->id) }}" class="btn btn-outline-warning btn-sm fw-bold mt-1">
                                     Pagar alquiler
                                 </a>
+
+                                {{-- ✅ Botón CANCELAR solo cuando la habitación está EN USO --}}
+                                @if ($hab->estado_texto === 'En uso')
+                                    <button
+                                        class="btn btn-outline-danger btn-sm fw-bold mt-1"
+                                        wire:click.stop="cancelarAlquiler({{ $alquiler->id }})">
+                                        Cancelar alquiler
+                                    </button>
+                                @endif
                             @endif
                         </div>
                     </div>
@@ -95,7 +113,6 @@
             overflow: hidden;
             transition: .15s transform, .15s box-shadow;
         }
-
         .house-card::before {
             content: '';
             position: absolute;
@@ -106,7 +123,6 @@
             background: inherit;
             clip-path: polygon(50% 0, 100% 100%, 0 100%);
         }
-
         .house-card::after {
             content: '';
             position: absolute;
@@ -117,7 +133,6 @@
             background: rgba(0, 0, 0, .15);
             filter: blur(4px);
         }
-
         .house-card:hover {
             transform: translateY(-4px) scale(1.02);
             box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .25);

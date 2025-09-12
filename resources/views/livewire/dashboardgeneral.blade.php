@@ -6,7 +6,7 @@
             gap: 20px;
             padding: 15px;
             background-color: #f8f9fa;
-            align-items: flex-start; /* Alinea todo a la izquierda */
+            align-items: flex-start;
         }
 
         .section-container {
@@ -25,14 +25,14 @@
             margin-bottom: 15px;
             border-bottom: 1px solid #f0f0f0;
             padding-bottom: 10px;
-            text-align: left; /* Alinea los títulos a la izquierda */
+            text-align: left;
         }
 
         .horizontal-container {
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
-            justify-content: flex-start; /* Alinea las tarjetas a la izquierda */
+            justify-content: flex-start;
         }
 
         .card-container {
@@ -56,7 +56,7 @@
         .card-content {
             display: flex;
             flex-direction: column;
-            align-items: flex-start; /* Alinea el contenido de las tarjetas a la izquierda */
+            align-items: flex-start;
         }
 
         .card-title {
@@ -84,17 +84,14 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        .icon-generated {
-            background: linear-gradient(45deg, #3F51B5, #2196F3);
-        }
+        .icon-generated { background: linear-gradient(45deg, #3F51B5, #2196F3); }
 
-        .icon-alquilado {
-            background: linear-gradient(45deg, #FF5722, #FFC107);
-        }
-
-        .icon-libre {
-            background: linear-gradient(45deg, #4CAF50, #8BC34A);
-        }
+        /* Estados */
+        .icon-uso { background: linear-gradient(45deg, #FF5722, #FFC107); }         /* En uso */
+        .icon-disponible { background: linear-gradient(45deg, #4CAF50, #8BC34A); }  /* Disponible */
+        .icon-limpieza { background: linear-gradient(45deg, #2196F3, #03A9F4); }    /* En limpieza */
+        .icon-mantenimiento { background: linear-gradient(45deg, #9E9E9E, #616161);}/* Mantenimiento */
+        .icon-pagado { background: linear-gradient(45deg, #FFD54F, #FFB300); }      /* Pagado */
 
         .room-card {
             background: #ffffff;
@@ -138,32 +135,77 @@
         <div class="card-icon icon-generated">💰</div>
     </div>
 
-    <!-- Habitaciones Alquiladas -->
+    <!-- En uso -->
     <div class="section-container">
-        <div class="section-title">Habitaciones Alquiladas ({{ count($habitacionesAlquiladas) }})</div>
+        <div class="section-title">En uso ({{ count($enUso) }})</div>
         <div class="horizontal-container">
-            @forelse ($habitacionesAlquiladas as $habitacion)
+            @forelse ($enUso as $habitacion)
                 <div class="room-card">
-                    <div class="room-icon icon-alquilado">🏠</div>
-                    <div class="card-title">Habitación {{ $habitacion->habitacion }}</div>
+                    <div class="room-icon icon-uso">🏠</div>
+                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
                 </div>
             @empty
-                <p>No hay habitaciones alquiladas.</p>
+                <p>No hay habitaciones en uso.</p>
             @endforelse
         </div>
     </div>
 
-    <!-- Habitaciones Libres -->
+    <!-- Disponibles -->
     <div class="section-container">
-        <div class="section-title">Habitaciones Libres ({{ count($habitacionesLibres) }})</div>
+        <div class="section-title">Disponibles ({{ count($disponibles) }})</div>
         <div class="horizontal-container">
-            @forelse ($habitacionesLibres as $habitacion)
+            @forelse ($disponibles as $habitacion)
                 <div class="room-card">
-                    <div class="room-icon icon-libre">🛏️</div>
-                    <div class="card-title">Habitación {{ $habitacion->habitacion }}</div>
+                    <div class="room-icon icon-disponible">🛏️</div>
+                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
                 </div>
             @empty
-                <p>No hay habitaciones libres.</p>
+                <p>No hay habitaciones disponibles.</p>
+            @endforelse
+        </div>
+    </div>
+
+    <!-- En limpieza -->
+    <div class="section-container">
+        <div class="section-title">En limpieza ({{ count($enLimpieza) }})</div>
+        <div class="horizontal-container">
+            @forelse ($enLimpieza as $habitacion)
+                <div class="room-card">
+                    <div class="room-icon icon-limpieza">🧽</div>
+                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
+                </div>
+            @empty
+                <p>No hay habitaciones en limpieza.</p>
+            @endforelse
+        </div>
+    </div>
+
+    <!-- Mantenimiento -->
+    <div class="section-container">
+        <div class="section-title">Mantenimiento ({{ count($mantenimiento) }})</div>
+        <div class="horizontal-container">
+            @forelse ($mantenimiento as $habitacion)
+                <div class="room-card">
+                    <div class="room-icon icon-mantenimiento">🛠️</div>
+                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
+                </div>
+            @empty
+                <p>No hay habitaciones en mantenimiento.</p>
+            @endforelse
+        </div>
+    </div>
+
+    <!-- Pagado -->
+    <div class="section-container">
+        <div class="section-title">Pagado ({{ count($pagado) }})</div>
+        <div class="horizontal-container">
+            @forelse ($pagado as $habitacion)
+                <div class="room-card">
+                    <div class="room-icon icon-pagado">✅</div>
+                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
+                </div>
+            @empty
+                <p>No hay habitaciones en estado pagado.</p>
             @endforelse
         </div>
     </div>
