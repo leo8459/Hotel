@@ -2,7 +2,7 @@
     <h2 class="fw-bold mb-4 text-primary">Editar Alquiler</h2>
 
     @if (session()->has('mensaje'))
-        <div class="alert alert-success">{{ session('mensaje') }}</div>
+    <div class="alert alert-success">{{ session('mensaje') }}</div>
     @endif
 
     <div class="card">
@@ -32,7 +32,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Salida (por defecto: ahora)</label>
-                    <input type="datetime-local" class="form-control" wire:model.live="salida" wire:change="actualizarSalida($event.target.value)">
+                    <input type="datetime-local" class="form-control" wire:model.live="salida" wire:change="actualizarSalida($event.target.value)" readonly>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Horas (redondeo ↑)</label>
@@ -55,47 +55,46 @@
                 <select class="form-select" wire:model="inventario_id" wire:change="agregarInventario">
                     <option value="">Seleccione o busque un inventario</option>
                     @foreach($inventarios as $inv)
-                        <option value="{{ $inv->id }}">
-                            {{ $inv->articulo }} - Precio: {{ $inv->precio }} (Stock: {{ $inv->stock }})
-                        </option>
+                    <option value="{{ $inv->id }}">
+                        {{ $inv->articulo }} - Precio: {{ $inv->precio }} (Stock: {{ $inv->stock }})
+                    </option>
                     @endforeach
                 </select>
                 @if ($inventario_id)
-                    <small class="text-muted d-block mt-1">
-                        Disponible del seleccionado:
-                        <strong>{{ $this->getStockDisponible((int)$inventario_id) }}</strong>
-                        / Stock total: <strong>{{ $this->getStockTotal((int)$inventario_id) }}</strong>
-                    </small>
+                <small class="text-muted d-block mt-1">
+                    Disponible del seleccionado:
+                    <strong>{{ $this->getStockDisponible((int)$inventario_id) }}</strong>
+                    / Stock total: <strong>{{ $this->getStockTotal((int)$inventario_id) }}</strong>
+                </small>
                 @endif
             </div>
 
             {{-- Lista consumos --}}
             @if ($consumos)
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Lista de Inventarios Consumidos</label>
-                    <ul class="list-unstyled">
-                        @foreach($consumos as $id => $item)
-                            <li class="mb-2">
-                                • {{ $item['articulo'] }} (Precio: {{ $item['precio'] }}) —
-                                Cantidad:
-                                <input
-                                    type="number"
-                                    class="form-control d-inline-block w-auto"
-                                    wire:change="actualizarCantidad({{ $id }}, $event.target.value)"
-                                    value="{{ $item['cantidad'] }}"
-                                    min="1"
-                                    max="{{ $this->getStockTotal($id) }}"
-                                >
-                                <span class="badge bg-light text-dark ms-2">
-                                    Disp: {{ $this->getStockDisponible($id) }}
-                                </span>
-                                <button class="btn btn-danger btn-sm ms-2" wire:click="eliminarConsumo({{ $id }})">
-                                    Eliminar
-                                </button>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Lista de Inventarios Consumidos</label>
+                <ul class="list-unstyled">
+                    @foreach($consumos as $id => $item)
+                    <li class="mb-2">
+                        • {{ $item['articulo'] }} (Precio: {{ $item['precio'] }}) —
+                        Cantidad:
+                        <input
+                            type="number"
+                            class="form-control d-inline-block w-auto"
+                            wire:change="actualizarCantidad({{ $id }}, $event.target.value)"
+                            value="{{ $item['cantidad'] }}"
+                            min="1"
+                            max="{{ $this->getStockTotal($id) }}">
+                        <span class="badge bg-light text-dark ms-2">
+                            Disp: {{ $this->getStockDisponible($id) }}
+                        </span>
+                        <button class="btn btn-danger btn-sm ms-2" wire:click="eliminarConsumo({{ $id }})">
+                            Eliminar
+                        </button>
+                    </li>
+                    @endforeach
+                </ul>
+            </div>
             @endif
 
             {{-- Totales --}}

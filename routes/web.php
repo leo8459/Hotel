@@ -88,7 +88,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/evento', [EventoController::class, 'obtenereventos']);
     Route::get('/alquileres', [AlquilerController::class, 'obteneralquileres']);
-        Route::post('/alquileres', [AlquilerController::class, 'obteneralquileres']);
+    Route::post('/alquileres', [AlquilerController::class, 'obteneralquileres']);
 
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
@@ -97,7 +97,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/editaralquiler/{alquiler}', Editaralquiler::class)
         ->name('editar-alquiler');
-Route::get('/pagaralquiler/{alquiler}', Pagaralquiler::class)
+    Route::get('/pagaralquiler/{alquiler}', Pagaralquiler::class)
         ->name('pagar-alquiler');
 
     //DASHBOARD
@@ -110,16 +110,16 @@ Route::get('/pagaralquiler/{alquiler}', Pagaralquiler::class)
 
     Route::get('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
         ->name('alquiler.crear');
-        
 
-         Route::post('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
+
+    Route::post('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::post('/inventarios', [InventarioController::class, 'obtenerinventario']);
     Route::post('/crearalquiler', [AlquilerController::class, 'alquiler'])
         ->name('crear-alquiler');
 
     Route::post('/editaralquiler/{alquiler}', Editaralquiler::class)
         ->name('editar-alquiler');
-Route::post('/pagaralquiler/{alquiler}', Pagaralquiler::class)
+    Route::post('/pagaralquiler/{alquiler}', Pagaralquiler::class)
         ->name('pagar-alquiler');
 
     //DASHBOARD

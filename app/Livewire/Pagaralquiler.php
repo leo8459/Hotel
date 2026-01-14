@@ -22,6 +22,7 @@ class Pagaralquiler extends Component
     public $tipopago = '';        // EFECTIVO | QR | TARJETA
     public $selectedInventarioId; // para el <select>
     public $selectedInventarios = []; // [id => ['id'=>, 'articulo'=>, 'precio'=>, 'cantidad'=>, 'stock'=>]]
+    public $tarifaSeleccionada = 'HORAS';
 
     // Totales
     public $totalHoras = 0;
@@ -105,6 +106,15 @@ class Pagaralquiler extends Component
     {
         $this->recalcularTotales();
     }
+    public function updatedTarifaSeleccionada()
+    {
+        $this->recalcularTotales();
+    }
+    public function cambiarTarifa($valor)
+    {
+        $this->tarifaSeleccionada = $valor;
+        $this->recalcularTotales();
+    }
 
     public function updatedTipopago()
     {
@@ -112,93 +122,100 @@ class Pagaralquiler extends Component
     }
 
     // ---------- Pagar ----------
-public function pay()
-{
-    $this->validate([
-        'tipopago'   => 'required|in:EFECTIVO,QR,TARJETA',
-        'horaSalida' => 'required|date',
-    ]);
+    public function pay()
+    {
+        $this->validate([
+            'tipopago'   => 'required|in:EFECTIVO,QR,TARJETA',
+            'horaSalida' => 'required|date',
+        ]);
 
-    $pdf = null; // PDF generado
+        $pdf = null; // PDF generado
 
-    DB::transaction(function () use (&$pdf) {
-        $salida     = Carbon::parse($this->horaSalida, 'America/La_Paz');
-        $entrada    = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
-        $habitacion = $this->alquiler->habitacion;
+        DB::transaction(function () use (&$pdf) {
+            $salida     = Carbon::parse($this->horaSalida, 'America/La_Paz');
+            $entrada    = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
+            $habitacion = $this->alquiler->habitacion;
 
-        $this->recalcularTotales();
+            $this->recalcularTotales();
 
-        // Descontar stock y crear eventos por cada producto
-        foreach ($this->selectedInventarios as $item) {
-            $inv = Inventario::find($item['id']);
-            if ($inv) {
-                $cantidadVendida = $item['cantidad'];
-                $precioUnitario  = $item['precio'];
-                $totalVendido    = $cantidadVendida * $precioUnitario;
+            // Descontar stock y crear eventos por cada producto
+            foreach ($this->selectedInventarios as $item) {
+                $inv = Inventario::find($item['id']);
+                if ($inv) {
+                    $cantidadVendida = $item['cantidad'];
+                    $precioUnitario  = $item['precio'];
+                    $totalVendido    = $cantidadVendida * $precioUnitario;
 
-                // Descontar del inventario
-                $inv->stock = max(0, $inv->stock - $cantidadVendida);
-                $inv->save();
+                    // Descontar del inventario
+                    $inv->stock = max(0, $inv->stock - $cantidadVendida);
+                    $inv->save();
 
-                // Crear evento de venta
-                \App\Models\Eventos::create([
-                    'articulo'        => $inv->articulo,
-                    'precio'          => 0,
-                    'stock'           => 0,
-                    'vendido'         => $cantidadVendida,
-                    'precio_vendido'  => $totalVendido,
-                    'habitacion_id'   => $this->alquiler->habitacion_id,
-                    'inventario_id'   => $inv->id,
-                    'usuario_id'      => auth()->id(),
-                ]);
+                    // Crear evento de venta
+                    \App\Models\Eventos::create([
+                        'articulo'        => $inv->articulo,
+                        'precio'          => 0,
+                        'stock'           => 0,
+                        'vendido'         => $cantidadVendida,
+                        'precio_vendido'  => $totalVendido,
+                        'habitacion_id'   => $this->alquiler->habitacion_id,
+                        'inventario_id'   => $inv->id,
+                        'usuario_id'      => auth()->id(),
+                    ]);
+                }
             }
-        }
 
-        // Actualizar el alquiler
-        $this->alquiler->update([
-            'salida'             => $salida,
-            'horas'              => ceil($entrada->diffInMinutes($salida) / 60),
-            'tipopago'           => $this->tipopago,
-            'total'              => $this->totalGeneral,
-            'estado'             => 'pagado',
-            'inventario_detalle' => json_encode($this->selectedInventarios),
-            'usuario_id'         => auth()->id(),
-        ]);
+            // Actualizar el alquiler
+            $this->alquiler->update([
+                'salida'             => $salida,
+                'horas'              => $this->tarifaSeleccionada === 'NOCTURNA'
+                    ? null
+                    : ceil($entrada->diffInMinutes($salida) / 60),
+                'tipopago'           => $this->tipopago,
+                'total'              => $this->totalGeneral,
+                'estado'             => 'pagado',
+                'tarifa_seleccionada' => $this->tarifaSeleccionada,
+                'inventario_detalle' => json_encode($this->selectedInventarios),
+                'usuario_id'         => auth()->id(),
+            ]);
 
-        // Actualizar habitación
-        $habitacion->update([
-            'estado'       => 1,
-            'estado_texto' => 'Pagado',
-            'color'        => 'bg-info',
-        ]);
+            // Actualizar habitación
+            $habitacion->update([
+                'estado'       => 1,
+                'estado_texto' => 'Pagado',
+                'color'        => 'bg-info',
+            ]);
 
-        // Generar PDF
-        $detalleInventario = $this->selectedInventarios;
-        $totalInventario   = $this->totalInventario;
-        $totalHabitacion   = $this->totalHoras;
-        $fechaPago         = now('America/La_Paz')->format('d-m-Y H:i');
-        $alquiler          = $this->alquiler;
+            // Generar PDF
+            $detalleInventario = $this->selectedInventarios;
+            $totalInventario   = $this->totalInventario;
+            $totalHabitacion   = $this->totalHoras;
+            $fechaPago         = now('America/La_Paz')->format('d-m-Y H:i');
+            $alquiler          = $this->alquiler;
 
-        $pdf = Pdf::loadView('pdf.boleta', compact(
-            'alquiler', 'detalleInventario', 'totalInventario', 'totalHabitacion', 'fechaPago'
-        ));
+            $pdf = Pdf::loadView('pdf.boleta', compact(
+                'alquiler',
+                'detalleInventario',
+                'totalInventario',
+                'totalHabitacion',
+                'fechaPago'
+            ));
 
-        // Enviar por correo
-        $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
-        Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
-    });
+            // Enviar por correo
+            $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
+            Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
+        });
 
-    session()->flash(
-        'message',
-        'Pago registrado correctamente (Bs ' . $this->totalGeneral . '). Se envió al correo y se descargó la boleta.'
-    );
+        session()->flash(
+            'message',
+            'Pago registrado correctamente (Bs ' . $this->totalGeneral . '). Se envió al correo y se descargó la boleta.'
+        );
 
-    // Descargar el PDF después del pago
-    return response()->streamDownload(
-        fn() => print($pdf->output()),
-        "boleta_{$this->alquiler->id}.pdf"
-    );
-}
+        // Descargar el PDF después del pago
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            "boleta_{$this->alquiler->id}.pdf"
+        );
+    }
 
 
 
@@ -208,19 +225,29 @@ public function pay()
     // ---------- Helpers ----------
     private function recalcularTotales()
     {
-        // Vuelve a calcular cada vez que algo cambia
+        // Inventario
         $this->totalInventario = collect($this->selectedInventarios)
-            ->sum(fn ($item) => ($item['precio'] ?? 0) * ($item['cantidad'] ?? 1));
+            ->sum(fn($item) => ($item['precio'] ?? 0) * ($item['cantidad'] ?? 1));
 
-        // Horas + aire
+        $habitacion = $this->alquiler->habitacion;
+
+        // 🔴 TARIFA NOCTURNA
+        if ($this->tarifaSeleccionada === 'NOCTURNA') {
+            $this->totalHoras   = $habitacion->tarifa_opcion1 ?? 0;
+            $this->totalGeneral = $this->totalHoras + $this->totalInventario;
+            return;
+        }
+
+        // 🟢 TARIFA POR HORAS (lógica normal)
         $salida  = Carbon::parse($this->horaSalida, 'America/La_Paz');
         $entrada = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
-        $habitacion = $this->alquiler->habitacion;
 
         $minTot = $entrada->diffInMinutes($salida);
         $precioHoras = $habitacion?->preciohora ?? 0;
+
         if ($minTot > 75) {
-            $precioHoras += (intdiv($minTot - 75, 60) + 1) * ($habitacion->precio_extra ?? 0);
+            $precioHoras += (intdiv($minTot - 75, 60) + 1)
+                * ($habitacion->precio_extra ?? 0);
         }
 
         $costoAire = $this->alquiler->aireacondicionado
@@ -230,6 +257,7 @@ public function pay()
         $this->totalHoras   = $precioHoras + $costoAire;
         $this->totalGeneral = $this->totalHoras + $this->totalInventario;
     }
+
 
     private function calcularCostoAire(Carbon $fin)
     {
