@@ -12,9 +12,10 @@ class Inventario extends Model
 
     protected $fillable = [
         'articulo',
+        'precio_entrada',
         'precio',
         'stock',
         'estado',
+        'total_compra', // ✅
     ];
-
 }

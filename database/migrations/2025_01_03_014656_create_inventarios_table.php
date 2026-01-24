@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id(); // Clave primaria
             $table->string('articulo');
             $table->decimal('precio', 8, 2);
+            $table->decimal('total_compra', 12, 2)->default(0);
+            $table->decimal('precio_entrada', 12, 2)->default(0);
+
             $table->integer('stock');
             $table->boolean('estado')->default(1); // 1 = activo, 0 = inactivo
             $table->timestamps();

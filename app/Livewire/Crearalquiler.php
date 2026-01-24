@@ -6,21 +6,20 @@ use Livewire\Component;
 use App\Models\Habitacion;
 use App\Models\Alquiler;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Auth;
-use Livewire\WithPagination;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ReporteTurno;
 use App\Models\Inventario;
 use Carbon\Carbon;
-use App\Models\User;
-use App\Mail\BoletaAlquiler;
-use Illuminate\Support\Facades\DB; // ✅
+use Illuminate\Support\Facades\DB;
 
 class CrearAlquiler extends Component
 {
     public $habitaciones = [];
     public $fechaInicio;
     public $fechaFin;
+
+    // ✅ Mapa: habitacion_id => alquiler activo
+    // public $alquileresActivos = [];
 
     public function mount(): void
     {
@@ -31,7 +30,6 @@ class CrearAlquiler extends Component
     {
         $hab = Habitacion::findOrFail($id);
 
-        // 🔒 Bloquear si está en uso, limpieza, mantenimiento o pagado
         if (in_array($hab->estado_texto, ['En uso', 'En limpieza', 'Mantenimiento', 'Pagado'])) {
             $this->dispatch('toast', type: 'error', message: 'La habitación no está disponible para alquilar.');
             return;
@@ -40,24 +38,39 @@ class CrearAlquiler extends Component
         $this->dispatch('abrir-modal-alquiler', id: $id);
     }
 
-    /** ================================
-     *  ✅ Cancelar alquiler (EN USO)
-     *  - Restaura stock
-     *  - Limpia datos del alquiler (null donde aplica) y estado = 'disponible'
-     *  - Libera habitación => 'Disponible'
-     * ================================= */
+    // ✅ Temporizador HH:MM:SS (tiempo transcurrido desde entrada)
+    public function getTiempoTranscurrido($entrada): string
+    {
+        if (!$entrada) return '00:00:00';
+
+        $inicio = Carbon::parse($entrada, 'America/La_Paz');
+        $ahora  = Carbon::now('America/La_Paz');
+
+        if ($ahora->lessThan($inicio)) {
+            return '00:00:00';
+        }
+
+        $segundos = $inicio->diffInSeconds($ahora);
+
+        $h = intdiv($segundos, 3600);
+        $m = intdiv($segundos % 3600, 60);
+        $s = $segundos % 60;
+
+        return sprintf('%02d:%02d:%02d', $h, $m, $s);
+    }
+
+    /** ✅ Cancelar alquiler (EN USO) y restaurar stock */
     public function cancelarAlquiler(int $alquilerId): void
     {
         try {
             DB::transaction(function () use ($alquilerId) {
                 $alquiler = Alquiler::lockForUpdate()->findOrFail($alquilerId);
 
-                // Opcional: aseguramos que sea un alquiler activo
                 if ($alquiler->estado !== 'alquilado') {
                     abort(400, 'El alquiler no está activo.');
                 }
 
-                // Restaurar stock de consumos si existían
+                // Restaurar stock
                 $detalle = json_decode($alquiler->inventario_detalle, true) ?? [];
                 foreach ($detalle as $invId => $item) {
                     $inv = Inventario::find($invId);
@@ -66,38 +79,36 @@ class CrearAlquiler extends Component
                     }
                 }
 
-                // Limpiar datos del alquiler (null donde la migración lo permite) + estado disponible
+                // Limpiar alquiler
                 $alquiler->update([
-                    'tipoingreso'        => null,
-                    'tipopago'           => null,
-                    'aireacondicionado'  => null,
-                    'entrada'            => null,
-                    'salida'             => null,
-                    'horas'              => null,
-                    'total'              => null,
-                    'inventario_detalle' => null,
-                    'tarifa_seleccionada'=> null,
-                    'aire_inicio'        => null,
-                    'aire_fin'           => null,
-                    'inventario_id'      => null,
-                    'usuario_id'         => null,
-                    'estado'             => 'disponible',
+                    'tipoingreso'         => null,
+                    'tipopago'            => null,
+                    'aireacondicionado'   => null,
+                    'entrada'             => null,
+                    'salida'              => null,
+                    'horas'               => null,
+                    'total'               => null,
+                    'inventario_detalle'  => null,
+                    'tarifa_seleccionada' => null,
+                    'aire_inicio'         => null,
+                    'aire_fin'            => null,
+                    'inventario_id'       => null,
+                    'usuario_id'          => null,
+                    'estado'              => 'disponible',
                 ]);
 
                 // Liberar habitación
                 $hab = Habitacion::find($alquiler->habitacion_id);
                 if ($hab) {
                     $hab->update([
-                        'estado'       => 1, // asumiendo 1 = Disponible
+                        'estado'       => 1,
                         'estado_texto' => 'Disponible',
                         'color'        => 'bg-success text-white',
                     ]);
                 }
             });
 
-            // Refrescar listado
             $this->habitaciones = Habitacion::orderBy('habitacion')->get();
-
             session()->flash('message', 'Alquiler cancelado y habitación liberada.');
         } catch (\Throwable $e) {
             session()->flash('error', 'No se pudo cancelar el alquiler: ' . $e->getMessage());
@@ -150,17 +161,28 @@ class CrearAlquiler extends Component
         $nombreArchivo = 'reporte_turno_' . $usuario->id . '.pdf';
         $pdfContent = $pdf->output();
 
-        // ENVIAR CORREO
         Mail::to('hector.fernandez.z@gmail.com')->send(new ReporteTurno($pdfContent, $nombreArchivo));
 
-        // DEVOLVER DESCARGA TAMBIÉN
         return response()->streamDownload(fn() => print($pdfContent), $nombreArchivo);
     }
 
-    public function render()
-    {
-        return view('livewire.crearalquiler')
-            ->extends('adminlte::page')
-            ->section('content');
-    }
+  public function render()
+{
+    // Recargar habitaciones (para que el poll refresque estados)
+    $this->habitaciones = Habitacion::orderBy('habitacion')->get();
+
+    // ✅ Colección keyBy(habitacion_id) (NO toArray)
+    $activos = Alquiler::where('estado', 'alquilado')
+        ->orderBy('entrada', 'desc')
+        ->get()
+        ->keyBy('habitacion_id');
+
+    return view('livewire.crearalquiler', [
+        'habitaciones'      => $this->habitaciones,
+        'alquileresActivos' => $activos,
+    ])
+        ->extends('adminlte::page')
+        ->section('content');
+}
+
 }

@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.1s>
     <div class="container py-4">
         <h2 class="fw-bold mb-4 text-secondary">HABITACIONES</h2>
 
@@ -33,16 +33,20 @@
                         default => 'bg-light text-dark',
                     };
 
-                    $alquiler = \App\Models\Alquiler::where('habitacion_id', $hab->id)
-                        ->where('estado', 'alquilado')
-                        ->latest()
-                        ->first();
+                    // ✅ ahora es colección keyBy, se obtiene con get()
+                    $alquiler = $alquileresActivos->get($hab->id);
 
                     $bloqueado = in_array($hab->estado_texto, ['En uso', 'En limpieza', 'Mantenimiento', 'Pagado']);
+
+                    // ✅ entrada para timer
+                    $entradaTimer = $alquiler?->entrada ?? $alquiler?->created_at;
                 @endphp
 
                 <div class="col-12 col-sm-6 col-lg-3">
-                    <div wire:click="alquilar({{ $hab->id }})" class="house-card {{ $hab->color }} shadow" style="cursor:pointer;">
+                    <div wire:click="alquilar({{ $hab->id }})"
+                         class="house-card {{ $hab->color }} shadow"
+                         style="cursor:pointer;">
+
                         <span class="badge rounded-pill position-absolute top-0 end-0 m-2 {{ $badgeClass }}">
                             {{ $hab->estado_texto }}
                         </span>
@@ -52,10 +56,21 @@
                             <h4 class="fw-bold">{{ $hab->habitacion }}</h4>
                             <small class="fst-italic">{{ ucfirst($hab->tipo) }}</small>
 
+                            {{-- ✅ TEMPORIZADOR SOLO SI ESTÁ EN USO --}}
+                            @if ($hab->estado_texto === 'En uso' && $entradaTimer)
+                                <div class="mt-2">
+                                    <span class="badge bg-dark text-white px-3 py-2">
+                                        <i class="bi bi-stopwatch me-1"></i>
+                                        Tiempo: {{ $this->getTiempoTranscurrido($entradaTimer) }}
+                                    </span>
+                                </div>
+                            @endif
+
                             <hr class="border-white opacity-50 w-100">
                             <div class="small">
                                 <div><i class="bi bi-clock me-1"></i>Hora: Bs {{ number_format($hab->preciohora, 2) }}</div>
                                 <div><i class="bi bi-cash-coin me-1"></i>Extra: Bs {{ number_format($hab->precio_extra, 2) }}</div>
+
                                 @if ($hab->tarifa_opcion1)
                                     <span class="badge bg-warning text-dark mt-1 d-inline-block">
                                         Tarifario nocturno: Bs {{ number_format($hab->tarifa_opcion1, 2) }}
@@ -65,14 +80,18 @@
                         </div>
 
                         <div class="text-center py-2 bg-light">
-                            <a href="{{ route('habitacion.estado', $hab->id) }}" class="btn btn-outline-primary btn-sm fw-bold">
+                            <a href="{{ route('habitacion.estado', $hab->id) }}"
+                               class="btn btn-outline-primary btn-sm fw-bold"
+                               onclick="event.stopPropagation();">
                                 Estado
                             </a>
                         </div>
 
                         <div class="hotel-footer bg-light text-center py-2">
                             @if (!$bloqueado)
-                                <a href="{{ route('alquiler.crear', $hab->id) }}" class="btn btn-outline-light text-dark btn-sm fw-bold">
+                                <a href="{{ route('alquiler.crear', $hab->id) }}"
+                                   class="btn btn-outline-light text-dark btn-sm fw-bold"
+                                   onclick="event.stopPropagation();">
                                     Alquilar
                                 </a>
                             @else
@@ -82,18 +101,22 @@
                             @endif
 
                             @if ($alquiler)
-                                <a href="{{ route('editar-alquiler', $alquiler->id) }}" class="btn btn-outline-warning btn-sm fw-bold mt-1">
+                                <a href="{{ route('editar-alquiler', $alquiler->id) }}"
+                                   class="btn btn-outline-warning btn-sm fw-bold mt-1"
+                                   onclick="event.stopPropagation();">
                                     Añadir Producto
                                 </a>
-                                <a href="{{ route('pagar-alquiler', $alquiler->id) }}" class="btn btn-outline-warning btn-sm fw-bold mt-1">
+
+                                <a href="{{ route('pagar-alquiler', $alquiler->id) }}"
+                                   class="btn btn-outline-warning btn-sm fw-bold mt-1"
+                                   onclick="event.stopPropagation();">
                                     Pagar alquiler
                                 </a>
 
-                                {{-- ✅ Botón CANCELAR solo cuando la habitación está EN USO --}}
+                                {{-- ✅ Botón CANCELAR solo cuando está EN USO --}}
                                 @if ($hab->estado_texto === 'En uso')
-                                    <button
-                                        class="btn btn-outline-danger btn-sm fw-bold mt-1"
-                                        wire:click.stop="cancelarAlquiler({{ $alquiler->id }})">
+                                    <button class="btn btn-outline-danger btn-sm fw-bold mt-1"
+                                            wire:click.stop="cancelarAlquiler({{ $alquiler->id }})">
                                         Cancelar alquiler
                                     </button>
                                 @endif

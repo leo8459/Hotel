@@ -5,7 +5,6 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\Alquiler;
 use App\Models\Inventario;
-use App\Models\Habitacion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -15,61 +14,123 @@ use App\Models\Eventos;
 
 class Pagaralquiler extends Component
 {
-    // ---------- Propiedades públicas ----------
-    public $alquilerId;           // id que llega por URL
-    public $alquiler;             // instancia Alquiler
-    public $horaSalida;           // datetime-local
-    public $tipopago = '';        // EFECTIVO | QR | TARJETA
-    public $selectedInventarioId; // para el <select>
-    public $selectedInventarios = []; // [id => ['id'=>, 'articulo'=>, 'precio'=>, 'cantidad'=>, 'stock'=>]]
+    public $alquilerId;
+    public $alquiler;
+    public $horaSalida;
+    public $tipopago = '';
+    public $selectedInventarioId;
+    public $selectedInventarios = []; // [id => ['id','articulo','precio','cantidad','stock_actual','reservado','max_permitido']]
     public $tarifaSeleccionada = 'HORAS';
 
-    // Totales
     public $totalHoras = 0;
     public $totalInventario = 0;
     public $totalGeneral = 0;
 
-    // ---------- Ciclo de vida ----------
     public function mount(Alquiler $alquiler)
     {
-        // El modelo llega inyectado por la ruta
-        $this->alquiler      = $alquiler;
-        $this->alquilerId    = $alquiler->id;
-        $this->horaSalida    = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i');
+        $this->alquiler   = $alquiler;
+        $this->alquilerId = $alquiler->id;
+        $this->horaSalida = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i');
 
-        // Cargar inventarios consumidos previos (si los hay)
-        $this->selectedInventarios = collect(
-            json_decode($alquiler->inventario_detalle, true) ?? []
-        )->mapWithKeys(function ($item, $key) {
-            // la clave $key puede ya ser el ID
-            $id  = $item['id'] ?? $key;
+        $detalleViejo = json_decode($alquiler->inventario_detalle, true) ?? [];
+        $viejoQty = $this->detalleToQtyMap($detalleViejo); // [id => cantidad reservada]
+
+        // Construir selectedInventarios con limites correctos
+        $this->selectedInventarios = [];
+        foreach ($viejoQty as $id => $qty) {
             $inv = Inventario::find($id);
-            return [
-                $id => [
-                    'id'       => $id,
-                    'articulo' => $inv?->articulo ?? ($item['articulo'] ?? 'Sin nombre'),
-                    'precio'   => $inv?->precio   ?? ($item['precio']   ?? 0),
-                    'cantidad' => $item['cantidad'] ?? 1,
-                    'stock'    => $inv?->stock    ?? 0,
-                ],
+            if (!$inv) continue;
+
+            $stockActual = (int)$inv->stock; // stock real en BD (ya con reserva descontada)
+            $reservado   = (int)$qty;        // lo que ya estaba reservado en este alquiler
+            $maxPermitido = $stockActual + $reservado;
+
+            $this->selectedInventarios[$id] = [
+                'id'            => $id,
+                'articulo'      => $inv->articulo,
+                'precio'        => (float)$inv->precio,
+                'cantidad'      => $reservado,
+                'stock_actual'  => $stockActual,
+                'reservado'     => $reservado,
+                'max_permitido' => $maxPermitido,
             ];
-        })->toArray();
+        }
 
         $this->recalcularTotales();
     }
 
-    // ---------- Render ----------
     public function render()
     {
         return view('livewire.pagaralquiler', [
             'inventariosDisponibles' => Inventario::where('stock', '>', 0)->get(),
             'habitacion'             => $this->alquiler->habitacion,
-        ])
-            ->extends('adminlte::page')
-            ->section('content');
+        ])->extends('adminlte::page')->section('content');
     }
 
-    // ---------- Acciones UI ----------
+    private function detalleToQtyMap(array $detalle): array
+    {
+        $map = [];
+        foreach ($detalle as $key => $item) {
+            $id = $item['id'] ?? $key;
+            if (!$id) continue;
+            $qty = (int)($item['cantidad'] ?? 0);
+            if ($qty > 0) $map[(int)$id] = $qty;
+        }
+        return $map;
+    }
+
+    private function ajustarStockPorDelta(array $viejoQty, array $nuevoQty): void
+    {
+        $ids = array_unique(array_merge(array_keys($viejoQty), array_keys($nuevoQty)));
+
+        foreach ($ids as $id) {
+            $old = (int)($viejoQty[$id] ?? 0);
+            $new = (int)($nuevoQty[$id] ?? 0);
+            $delta = $new - $old;
+
+            if ($delta === 0) continue;
+
+            $inv = Inventario::find($id);
+            if (!$inv) continue;
+
+            if ($delta > 0) {
+                if ($inv->stock < $delta) {
+                    throw new \Exception("Stock insuficiente de {$inv->articulo}. Disponible: {$inv->stock}, requerido: {$delta}");
+                }
+                $inv->decrement('stock', $delta);
+            }
+
+            if ($delta < 0) {
+                $inv->increment('stock', abs($delta));
+            }
+        }
+    }
+
+    // ✅ refresca stock_actual/max_permitido por si cambió el stock en BD
+    private function refreshLimits(): void
+    {
+        foreach ($this->selectedInventarios as $id => $item) {
+            $inv = Inventario::find($id);
+            if (!$inv) continue;
+
+            $reservado = (int)($item['reservado'] ?? 0);
+            $stockActual = (int)$inv->stock;
+
+            $this->selectedInventarios[$id]['stock_actual']  = $stockActual;
+            $this->selectedInventarios[$id]['max_permitido'] = $stockActual + $reservado;
+
+            // clamp cantidad si se pasó
+            $max = (int)$this->selectedInventarios[$id]['max_permitido'];
+            $cant = (int)($this->selectedInventarios[$id]['cantidad'] ?? 0);
+            if ($cant > $max) {
+                $this->selectedInventarios[$id]['cantidad'] = $max;
+            }
+            if ($this->selectedInventarios[$id]['cantidad'] < 1) {
+                $this->selectedInventarios[$id]['cantidad'] = 1;
+            }
+        }
+    }
+
     public function addInventario()
     {
         if (!$this->selectedInventarioId) return;
@@ -77,14 +138,43 @@ class Pagaralquiler extends Component
         $inv = Inventario::find($this->selectedInventarioId);
         if (!$inv) return;
 
-        if (!isset($this->selectedInventarios[$inv->id])) {
-            $this->selectedInventarios[$inv->id] = [
-                'id'       => $inv->id,
-                'articulo' => $inv->articulo,
-                'precio'   => $inv->precio,
-                'cantidad' => 1,
-                'stock'    => $inv->stock,
+        $id = (int)$inv->id;
+
+        // si no existe, lo agrego con reservado 0
+        if (!isset($this->selectedInventarios[$id])) {
+            $stockActual = (int)$inv->stock;
+            $reservado = 0;
+            $maxPermitido = $stockActual + $reservado;
+
+            // si no hay stock, no dejar agregar
+            if ($maxPermitido <= 0) {
+                session()->flash('error', "No hay stock disponible de {$inv->articulo}.");
+                $this->selectedInventarioId = null;
+                return;
+            }
+
+            $this->selectedInventarios[$id] = [
+                'id'            => $id,
+                'articulo'      => $inv->articulo,
+                'precio'        => (float)$inv->precio,
+                'cantidad'      => 1,
+                'stock_actual'  => $stockActual,
+                'reservado'     => 0,
+                'max_permitido' => $maxPermitido,
             ];
+        } else {
+            // subir +1 pero respetando max_permitido
+            $this->refreshLimits();
+            $max = (int)$this->selectedInventarios[$id]['max_permitido'];
+            $cant = (int)$this->selectedInventarios[$id]['cantidad'];
+
+            if ($cant + 1 > $max) {
+                session()->flash('error', "No puedes superar el stock disponible de {$this->selectedInventarios[$id]['articulo']} (Máx: {$max}).");
+                $this->selectedInventarioId = null;
+                return;
+            }
+
+            $this->selectedInventarios[$id]['cantidad'] += 1;
         }
 
         $this->selectedInventarioId = null;
@@ -93,12 +183,14 @@ class Pagaralquiler extends Component
 
     public function removeInventario($id)
     {
-        unset($this->selectedInventarios[$id]);
+        unset($this->selectedInventarios[(int)$id]);
         $this->recalcularTotales();
     }
 
     public function updatedSelectedInventarios()
     {
+        // clamp por si escriben manualmente
+        $this->refreshLimits();
         $this->recalcularTotales();
     }
 
@@ -106,22 +198,18 @@ class Pagaralquiler extends Component
     {
         $this->recalcularTotales();
     }
+
     public function updatedTarifaSeleccionada()
     {
         $this->recalcularTotales();
     }
+
     public function cambiarTarifa($valor)
     {
         $this->tarifaSeleccionada = $valor;
         $this->recalcularTotales();
     }
 
-    public function updatedTipopago()
-    {
-        // solo para refrescar – no recalcula nada
-    }
-
-    // ---------- Pagar ----------
     public function pay()
     {
         $this->validate([
@@ -129,64 +217,102 @@ class Pagaralquiler extends Component
             'horaSalida' => 'required|date',
         ]);
 
-        $pdf = null; // PDF generado
+        $pdf = null;
 
         DB::transaction(function () use (&$pdf) {
+
+            // ✅ VIEJO (reservado)
+            $detalleViejo = json_decode($this->alquiler->inventario_detalle, true) ?? [];
+            $viejoQty = $this->detalleToQtyMap($detalleViejo);
+
+            // ✅ NUEVO (lo que queda en pantalla)
+            $nuevoQty = [];
+            foreach ($this->selectedInventarios as $id => $item) {
+                $id = (int)($item['id'] ?? $id);
+                $qty = (int)($item['cantidad'] ?? 0);
+                if ($id > 0 && $qty > 0) $nuevoQty[$id] = $qty;
+            }
+
+            // ✅ Validar stock SOLO delta
+            foreach ($nuevoQty as $id => $qty) {
+                $inv = Inventario::find($id);
+                if (!$inv) continue;
+
+                $oldQty = (int)($viejoQty[$id] ?? 0);
+                $delta  = $qty - $oldQty;
+
+                if ($delta > 0 && $inv->stock < $delta) {
+                    throw new \Exception("Stock insuficiente de {$inv->articulo}. Disponible: {$inv->stock}, requerido: {$delta}");
+                }
+            }
+
+            // ✅ Ajuste SOLO delta
+            $this->ajustarStockPorDelta($viejoQty, $nuevoQty);
+
+            // ✅ Recalcular totales
+            $this->recalcularTotales();
+
+            // ✅ Eventos SOLO por lo nuevo vendido
+            foreach ($nuevoQty as $id => $newQty) {
+                $oldQty = (int)($viejoQty[$id] ?? 0);
+                $deltaVendida = $newQty - $oldQty;
+                if ($deltaVendida <= 0) continue;
+
+                $inv = Inventario::find($id);
+                if (!$inv) continue;
+
+                $totalVendido = $deltaVendida * ($inv->precio ?? 0);
+
+                Eventos::create([
+                    'articulo'        => $inv->articulo,
+                    'precio'          => 0,
+                    'stock'           => 0,
+                    'vendido'         => $deltaVendida,
+                    'precio_vendido'  => $totalVendido,
+                    'habitacion_id'   => $this->alquiler->habitacion_id,
+                    'inventario_id'   => $inv->id,
+                    'usuario_id'      => auth()->id(),
+                ]);
+            }
+
+            // Guardar detalle consistente
+            $detalleGuardar = [];
+            foreach ($nuevoQty as $id => $qty) {
+                $inv = Inventario::find($id);
+                $detalleGuardar[$id] = [
+                    'id'       => $id,
+                    'articulo' => $inv?->articulo ?? 'Sin nombre',
+                    'precio'   => $inv?->precio ?? 0,
+                    'cantidad' => $qty,
+                ];
+            }
+
             $salida     = Carbon::parse($this->horaSalida, 'America/La_Paz');
             $entrada    = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
             $habitacion = $this->alquiler->habitacion;
 
-            $this->recalcularTotales();
-
-            // Descontar stock y crear eventos por cada producto
-            foreach ($this->selectedInventarios as $item) {
-                $inv = Inventario::find($item['id']);
-                if ($inv) {
-                    $cantidadVendida = $item['cantidad'];
-                    $precioUnitario  = $item['precio'];
-                    $totalVendido    = $cantidadVendida * $precioUnitario;
-
-                    // Descontar del inventario
-                    $inv->stock = max(0, $inv->stock - $cantidadVendida);
-                    $inv->save();
-
-                    // Crear evento de venta
-                    \App\Models\Eventos::create([
-                        'articulo'        => $inv->articulo,
-                        'precio'          => 0,
-                        'stock'           => 0,
-                        'vendido'         => $cantidadVendida,
-                        'precio_vendido'  => $totalVendido,
-                        'habitacion_id'   => $this->alquiler->habitacion_id,
-                        'inventario_id'   => $inv->id,
-                        'usuario_id'      => auth()->id(),
-                    ]);
-                }
-            }
-
-            // Actualizar el alquiler
             $this->alquiler->update([
-                'salida'             => $salida,
-                'horas'              => $this->tarifaSeleccionada === 'NOCTURNA'
+                'salida'              => $salida,
+                'horas'               => $this->tarifaSeleccionada === 'NOCTURNA'
                     ? null
                     : ceil($entrada->diffInMinutes($salida) / 60),
-                'tipopago'           => $this->tipopago,
-                'total'              => $this->totalGeneral,
-                'estado'             => 'pagado',
+                'tipopago'            => $this->tipopago,
+                'total'               => $this->totalGeneral,
+                'estado'              => 'pagado',
                 'tarifa_seleccionada' => $this->tarifaSeleccionada,
-                'inventario_detalle' => json_encode($this->selectedInventarios),
-                'usuario_id'         => auth()->id(),
+                'inventario_detalle'  => json_encode($detalleGuardar),
+                'usuario_id'          => auth()->id(),
             ]);
 
-            // Actualizar habitación
-            $habitacion->update([
-                'estado'       => 1,
-                'estado_texto' => 'Pagado',
-                'color'        => 'bg-info',
-            ]);
+            if ($habitacion) {
+                $habitacion->update([
+                    'estado'       => 1,
+                    'estado_texto' => 'Pagado',
+                    'color'        => 'bg-info',
+                ]);
+            }
 
-            // Generar PDF
-            $detalleInventario = $this->selectedInventarios;
+            $detalleInventario = $detalleGuardar;
             $totalInventario   = $this->totalInventario;
             $totalHabitacion   = $this->totalHoras;
             $fechaPago         = now('America/La_Paz')->format('d-m-Y H:i');
@@ -200,45 +326,31 @@ class Pagaralquiler extends Component
                 'fechaPago'
             ));
 
-            // Enviar por correo
             $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
             Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
         });
 
-        session()->flash(
-            'message',
-            'Pago registrado correctamente (Bs ' . $this->totalGeneral . '). Se envió al correo y se descargó la boleta.'
-        );
+        session()->flash('message', 'Pago registrado correctamente (Bs ' . $this->totalGeneral . ').');
 
-        // Descargar el PDF después del pago
         return response()->streamDownload(
             fn() => print($pdf->output()),
             "boleta_{$this->alquiler->id}.pdf"
         );
     }
 
-
-
-
-
-
-    // ---------- Helpers ----------
     private function recalcularTotales()
     {
-        // Inventario
         $this->totalInventario = collect($this->selectedInventarios)
             ->sum(fn($item) => ($item['precio'] ?? 0) * ($item['cantidad'] ?? 1));
 
         $habitacion = $this->alquiler->habitacion;
 
-        // 🔴 TARIFA NOCTURNA
         if ($this->tarifaSeleccionada === 'NOCTURNA') {
             $this->totalHoras   = $habitacion->tarifa_opcion1 ?? 0;
             $this->totalGeneral = $this->totalHoras + $this->totalInventario;
             return;
         }
 
-        // 🟢 TARIFA POR HORAS (lógica normal)
         $salida  = Carbon::parse($this->horaSalida, 'America/La_Paz');
         $entrada = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
 
@@ -250,23 +362,7 @@ class Pagaralquiler extends Component
                 * ($habitacion->precio_extra ?? 0);
         }
 
-        $costoAire = $this->alquiler->aireacondicionado
-            ? $this->calcularCostoAire($salida)
-            : 0;
-
-        $this->totalHoras   = $precioHoras + $costoAire;
+        $this->totalHoras   = $precioHoras;
         $this->totalGeneral = $this->totalHoras + $this->totalInventario;
-    }
-
-
-    private function calcularCostoAire(Carbon $fin)
-    {
-        if (!$this->alquiler->aire_inicio) return 0;
-
-        $inicio = Carbon::parse($this->alquiler->aire_inicio, 'America/La_Paz');
-        if ($fin->lessThanOrEqualTo($inicio)) return 0;
-
-        $horas = $inicio->diffInHours($fin);
-        return $horas * 10; // Bs 10 por hora de aire
     }
 }
