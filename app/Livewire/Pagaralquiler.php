@@ -298,7 +298,7 @@ class Pagaralquiler extends Component
                     : ceil($entrada->diffInMinutes($salida) / 60),
                 'tipopago'            => $this->tipopago,
                 'total'               => $this->totalGeneral,
-                'estado'              => 'pagado',
+                'estado'              => 'Pagado',
                 'tarifa_seleccionada' => $this->tarifaSeleccionada,
                 'inventario_detalle'  => json_encode($detalleGuardar),
                 'usuario_id'          => auth()->id(),
