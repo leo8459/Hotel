@@ -25,6 +25,7 @@ class Pagaralquiler extends Component
     public $totalHoras = 0;
     public $totalInventario = 0;
     public $totalGeneral = 0;
+    public $usarFreezer = false;
 
     public function mount(Alquiler $alquiler)
     {
@@ -55,6 +56,7 @@ class Pagaralquiler extends Component
                 'max_permitido' => $maxPermitido,
             ];
         }
+        $this->usarFreezer = (bool)($alquiler->usar_freezer ?? false);
 
         $this->recalcularTotales();
     }
@@ -64,6 +66,8 @@ class Pagaralquiler extends Component
         return view('livewire.pagaralquiler', [
             'inventariosDisponibles' => Inventario::where('stock', '>', 0)->get(),
             'habitacion'             => $this->alquiler->habitacion,
+            'freezer'    => $this->alquiler->habitacion?->freezer_stock ?? [],
+
         ])->extends('adminlte::page')->section('content');
     }
 
@@ -210,133 +214,134 @@ class Pagaralquiler extends Component
         $this->recalcularTotales();
     }
 
-    public function pay()
-    {
-        $this->validate([
-            'tipopago'   => 'required|in:EFECTIVO,QR,TARJETA',
-            'horaSalida' => 'required|date',
+ public function pay()
+{
+    $this->validate([
+        'tipopago'   => 'required|in:EFECTIVO,QR,TARJETA',
+        'horaSalida' => 'required|date',
+    ]);
+
+    $pdf = null;
+
+    DB::transaction(function () use (&$pdf) {
+
+        // ✅ VIEJO (reservado en este alquiler)
+        $detalleViejo = json_decode($this->alquiler->inventario_detalle, true) ?? [];
+        $viejoQty = $this->detalleToQtyMap($detalleViejo); // [id => cantidad]
+
+        // ✅ NUEVO (lo que queda en pantalla)
+        $nuevoQty = [];
+        foreach ($this->selectedInventarios as $id => $item) {
+            $id  = (int)($item['id'] ?? $id);
+            $qty = (int)($item['cantidad'] ?? 0);
+            if ($id > 0 && $qty > 0) $nuevoQty[$id] = $qty;
+        }
+
+        // ✅ Ajuste stock con freezer + inventario y devuelve desglose por origen
+        //    $origenDelta: [id => ['freezer'=>x,'inventario'=>y]] SOLO para deltas positivos
+        $origenDelta = [];
+        $this->ajustarConsumoConFreezer($viejoQty, $nuevoQty, $origenDelta);
+
+        // ✅ Recalcular totales
+        $this->recalcularTotales();
+
+        // ✅ Eventos SOLO por lo NUEVO agregado (delta +)
+        //    ✅ 1 SOLO EVENTO POR ITEM para evitar duplicados
+        foreach ($nuevoQty as $id => $newQty) {
+            $oldQty = (int)($viejoQty[$id] ?? 0);
+            $deltaVendida = $newQty - $oldQty;
+            if ($deltaVendida <= 0) continue;
+
+            $inv = Inventario::find($id);
+            if (!$inv) continue;
+
+            $freezerUsado = (int)($origenDelta[$id]['freezer'] ?? 0);
+
+            // Si marcó freezer y efectivamente se usó freezer -> FREEZER, si no INVENTARIO
+            $tipoVenta = ($this->usarFreezer && $freezerUsado > 0)
+                ? 'FREEZER'
+                : 'INVENTARIO';
+
+            Eventos::create([
+                'articulo'        => $inv->articulo,
+                'precio'          => 0,
+                'stock'           => 0,
+                'vendido'         => $deltaVendida,
+                'precio_vendido'  => $deltaVendida * ((float)$inv->precio),
+                'tipo_venta'      => $tipoVenta,
+                'habitacion_id'   => $this->alquiler->habitacion_id,
+                'inventario_id'   => $inv->id,
+                'usuario_id'      => auth()->id(),
+            ]);
+        }
+
+        // ✅ Guardar detalle consistente en alquiler
+        $detalleGuardar = [];
+        foreach ($nuevoQty as $id => $qty) {
+            $inv = Inventario::find($id);
+            $detalleGuardar[$id] = [
+                'id'       => $id,
+                'articulo' => $inv?->articulo ?? 'Sin nombre',
+                'precio'   => (float)($inv?->precio ?? 0),
+                'cantidad' => (int)$qty,
+            ];
+        }
+
+        $salida     = Carbon::parse($this->horaSalida, 'America/La_Paz');
+        $entrada    = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
+        $habitacion = $this->alquiler->habitacion;
+
+        $this->alquiler->update([
+            'salida'              => $salida,
+            'horas'               => $this->tarifaSeleccionada === 'NOCTURNA'
+                ? null
+                : ceil($entrada->diffInMinutes($salida) / 60),
+            'tipopago'            => $this->tipopago,
+            'total'               => $this->totalGeneral,
+            'estado'              => 'Pagado',
+            'usar_freezer'        => (bool)$this->usarFreezer,
+            'tarifa_seleccionada' => $this->tarifaSeleccionada,
+            'inventario_detalle'  => json_encode($detalleGuardar),
+            'usuario_id'          => auth()->id(),
         ]);
 
-        $pdf = null;
-
-        DB::transaction(function () use (&$pdf) {
-
-            // ✅ VIEJO (reservado)
-            $detalleViejo = json_decode($this->alquiler->inventario_detalle, true) ?? [];
-            $viejoQty = $this->detalleToQtyMap($detalleViejo);
-
-            // ✅ NUEVO (lo que queda en pantalla)
-            $nuevoQty = [];
-            foreach ($this->selectedInventarios as $id => $item) {
-                $id = (int)($item['id'] ?? $id);
-                $qty = (int)($item['cantidad'] ?? 0);
-                if ($id > 0 && $qty > 0) $nuevoQty[$id] = $qty;
-            }
-
-            // ✅ Validar stock SOLO delta
-            foreach ($nuevoQty as $id => $qty) {
-                $inv = Inventario::find($id);
-                if (!$inv) continue;
-
-                $oldQty = (int)($viejoQty[$id] ?? 0);
-                $delta  = $qty - $oldQty;
-
-                if ($delta > 0 && $inv->stock < $delta) {
-                    throw new \Exception("Stock insuficiente de {$inv->articulo}. Disponible: {$inv->stock}, requerido: {$delta}");
-                }
-            }
-
-            // ✅ Ajuste SOLO delta
-            $this->ajustarStockPorDelta($viejoQty, $nuevoQty);
-
-            // ✅ Recalcular totales
-            $this->recalcularTotales();
-
-            // ✅ Eventos SOLO por lo nuevo vendido
-            foreach ($nuevoQty as $id => $newQty) {
-                $oldQty = (int)($viejoQty[$id] ?? 0);
-                $deltaVendida = $newQty - $oldQty;
-                if ($deltaVendida <= 0) continue;
-
-                $inv = Inventario::find($id);
-                if (!$inv) continue;
-
-                $totalVendido = $deltaVendida * ($inv->precio ?? 0);
-
-                Eventos::create([
-                    'articulo'        => $inv->articulo,
-                    'precio'          => 0,
-                    'stock'           => 0,
-                    'vendido'         => $deltaVendida,
-                    'precio_vendido'  => $totalVendido,
-                    'habitacion_id'   => $this->alquiler->habitacion_id,
-                    'inventario_id'   => $inv->id,
-                    'usuario_id'      => auth()->id(),
-                ]);
-            }
-
-            // Guardar detalle consistente
-            $detalleGuardar = [];
-            foreach ($nuevoQty as $id => $qty) {
-                $inv = Inventario::find($id);
-                $detalleGuardar[$id] = [
-                    'id'       => $id,
-                    'articulo' => $inv?->articulo ?? 'Sin nombre',
-                    'precio'   => $inv?->precio ?? 0,
-                    'cantidad' => $qty,
-                ];
-            }
-
-            $salida     = Carbon::parse($this->horaSalida, 'America/La_Paz');
-            $entrada    = Carbon::parse($this->alquiler->entrada, 'America/La_Paz');
-            $habitacion = $this->alquiler->habitacion;
-
-            $this->alquiler->update([
-                'salida'              => $salida,
-                'horas'               => $this->tarifaSeleccionada === 'NOCTURNA'
-                    ? null
-                    : ceil($entrada->diffInMinutes($salida) / 60),
-                'tipopago'            => $this->tipopago,
-                'total'               => $this->totalGeneral,
-                'estado'              => 'Pagado',
-                'tarifa_seleccionada' => $this->tarifaSeleccionada,
-                'inventario_detalle'  => json_encode($detalleGuardar),
-                'usuario_id'          => auth()->id(),
+        if ($habitacion) {
+            $habitacion->update([
+                'estado'       => 1,
+                'estado_texto' => 'Pagado',
+                'color'        => 'bg-info',
             ]);
+        }
 
-            if ($habitacion) {
-                $habitacion->update([
-                    'estado'       => 1,
-                    'estado_texto' => 'Pagado',
-                    'color'        => 'bg-info',
-                ]);
-            }
+        // ✅ PDF boleta
+        $detalleInventario = $detalleGuardar;
+        $totalInventario   = $this->totalInventario;
+        $totalHabitacion   = $this->totalHoras;
+        $fechaPago         = now('America/La_Paz')->format('d-m-Y H:i');
+        $alquiler          = $this->alquiler;
 
-            $detalleInventario = $detalleGuardar;
-            $totalInventario   = $this->totalInventario;
-            $totalHabitacion   = $this->totalHoras;
-            $fechaPago         = now('America/La_Paz')->format('d-m-Y H:i');
-            $alquiler          = $this->alquiler;
+        $pdf = Pdf::loadView('pdf.boleta', compact(
+            'alquiler',
+            'detalleInventario',
+            'totalInventario',
+            'totalHabitacion',
+            'fechaPago'
+        ));
 
-            $pdf = Pdf::loadView('pdf.boleta', compact(
-                'alquiler',
-                'detalleInventario',
-                'totalInventario',
-                'totalHabitacion',
-                'fechaPago'
-            ));
+        $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
+        Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
+    });
 
-            $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
-            Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
-        });
+    session()->flash('message', 'Pago registrado correctamente (Bs ' . $this->totalGeneral . ').');
 
-        session()->flash('message', 'Pago registrado correctamente (Bs ' . $this->totalGeneral . ').');
+    return response()->streamDownload(
+        fn() => print($pdf->output()),
+        "boleta_{$this->alquiler->id}.pdf"
+    );
+}
 
-        return response()->streamDownload(
-            fn() => print($pdf->output()),
-            "boleta_{$this->alquiler->id}.pdf"
-        );
-    }
+
+
 
     private function recalcularTotales()
     {
@@ -365,4 +370,76 @@ class Pagaralquiler extends Component
         $this->totalHoras   = $precioHoras;
         $this->totalGeneral = $this->totalHoras + $this->totalInventario;
     }
+   private function ajustarConsumoConFreezer(array $viejoQty, array $nuevoQty, array &$origenDelta): void
+{
+    // 🔒 Bloquear habitación para actualizar freezer con seguridad
+    $habitacion = $this->alquiler->habitacion
+        ? \App\Models\Habitacion::lockForUpdate()->find($this->alquiler->habitacion->id)
+        : null;
+
+    $freezer = (array)($habitacion?->freezer_stock ?? []);
+
+    $origenDelta = []; // [id => ['freezer'=>x,'inventario'=>y]]
+
+    $ids = array_unique(array_merge(array_keys($viejoQty), array_keys($nuevoQty)));
+
+    foreach ($ids as $id) {
+        $id = (int)$id;
+
+        $old   = (int)($viejoQty[$id] ?? 0);
+        $new   = (int)($nuevoQty[$id] ?? 0);
+        $delta = $new - $old;
+
+        if ($delta === 0) continue;
+
+        // 🔒 Lock inventario
+        $inv = Inventario::lockForUpdate()->find($id);
+        if (!$inv) continue;
+
+        // ✅ AUMENTA consumo => DESCUENTA SIEMPRE DEL INVENTARIO
+        if ($delta > 0) {
+
+            // 1) SIEMPRE INVENTARIO
+            if ((int)$inv->stock < $delta) {
+                throw new \Exception("Stock insuficiente en inventario de {$inv->articulo}. Disponible: {$inv->stock}, requerido: {$delta}");
+            }
+            $inv->decrement('stock', $delta);
+
+            $origenDelta[$id] = [
+                'inventario' => $delta,
+                'freezer'    => 0,
+            ];
+
+            // 2) SI freezer marcado, TAMBIÉN descuenta del freezer (DOBLE)
+            if ($this->usarFreezer && $habitacion) {
+                $freezerQty = (int)($freezer[$id] ?? 0);
+                $take = min($delta, $freezerQty);
+
+                if ($take > 0) {
+                    $freezer[$id] = $freezerQty - $take;
+                    $origenDelta[$id]['freezer'] = $take;
+                }
+            }
+        }
+
+        // ✅ DISMINUYE consumo => devolución SOLO a inventario (no tocamos freezer)
+        if ($delta < 0) {
+            $devolver = abs($delta);
+            $inv->increment('stock', $devolver);
+
+            // No registramos origen en devoluciones
+            unset($origenDelta[$id]);
+        }
+    }
+
+    // ✅ Guardar freezer actualizado
+    if ($this->usarFreezer && $habitacion) {
+        foreach ($freezer as $k => $v) {
+            if ((int)$v <= 0) unset($freezer[$k]);
+        }
+        $habitacion->update(['freezer_stock' => $freezer]);
+    }
+}
+
+
 }

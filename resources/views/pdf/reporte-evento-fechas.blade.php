@@ -59,6 +59,7 @@
         <th>Artículo</th>
         <th>Usuario</th>
         <th>Tipo</th>
+        <th>Tipo Venta</th>
         <th>Ingreso</th>
         <th>Venta</th>
         <th>Total Ingreso</th>
@@ -74,6 +75,7 @@
             <td>{{ $e->articulo }}</td>
             <td>{{ $e->usuario_nombre ?? '—' }}</td>
             <td>{{ $e->stock > 0 ? 'INGRESO' : 'VENTA' }}</td>
+            <td>{{ $e->tipo_venta ?? '—' }}</td>
             <td>{{ $e->stock }}</td>
             <td>{{ $e->vendido }}</td>
             <td>Bs {{ number_format($e->stock > 0 ? $e->precio : 0, 2) }}</td>

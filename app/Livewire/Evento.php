@@ -14,8 +14,10 @@ class Evento extends Component
     use WithPagination;
 
     public $search = '';
-    public $fechaInicio = null; // ✅ vacío al inicio
-    public $fechaFin    = null; // ✅ vacío al inicio
+    public $fechaInicio = null; // vacío al inicio
+    public $fechaFin    = null; // vacío al inicio
+
+    protected $paginationTheme = 'bootstrap';
 
     public function updatingSearch()
     {
@@ -56,10 +58,7 @@ class Evento extends Component
             ->leftJoin('users', 'users.id', '=', 'eventos.usuario_id')
             ->leftJoin('inventarios', 'inventarios.id', '=', 'eventos.inventario_id')
 
-            // buscador
             ->when($this->search, fn($q) => $q->where('eventos.articulo', 'like', "%{$this->search}%"))
-
-            // ✅ solo filtra si el usuario llenó fechas
             ->when($inicio, fn($q) => $q->where('eventos.created_at', '>=', $inicio))
             ->when($fin, fn($q) => $q->where('eventos.created_at', '<=', $fin))
 
@@ -68,14 +67,14 @@ class Evento extends Component
                 DB::raw('users.name as usuario_nombre'),
                 DB::raw('inventarios.articulo as inventario_nombre'),
 
-                // saldo acumulado por artículo
+                // ✅ saldo acumulado por artículo
                 DB::raw("
                     SUM(eventos.stock - eventos.vendido)
                     OVER (PARTITION BY eventos.articulo ORDER BY eventos.created_at, eventos.id)
                     as saldo_stock
                 "),
 
-                // precio unitario
+                // ✅ precio unitario
                 DB::raw("
                     CASE
                         WHEN eventos.stock > 0 AND eventos.precio > 0 THEN (eventos.precio / NULLIF(eventos.stock,0))
@@ -117,7 +116,6 @@ class Evento extends Component
 
     public function render()
     {
-        // ✅ resumen (sin fechas = todo)
         $resumen = $this->queryResumen()->get()->map(function ($row) {
             $row->precio_unit = ($row->stock_ingresado > 0)
                 ? ($row->total_ingresado / $row->stock_ingresado)
@@ -127,7 +125,6 @@ class Evento extends Component
             return $row;
         });
 
-        // ✅ detalle (más nuevo primero)
         $eventos = $this->queryDetalle()
             ->orderBy('eventos.created_at', 'desc')
             ->orderBy('eventos.id', 'desc')
@@ -140,7 +137,6 @@ class Evento extends Component
 
     public function exportarPDF()
     {
-        // ✅ Exporta todo segun filtros (si fechas vacías => TODO)
         $eventos = $this->queryDetalle()
             ->orderBy('eventos.created_at', 'desc')
             ->orderBy('eventos.id', 'desc')

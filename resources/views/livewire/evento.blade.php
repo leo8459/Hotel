@@ -81,6 +81,7 @@
                             <th>Artículo</th>
                             <th>Usuario</th>
                             <th>Tipo</th>
+                            <th>Tipo Venta</th>
                             <th>Ingreso</th>
                             <th>Venta</th>
                             <th>Precio Unit.</th>
@@ -96,7 +97,19 @@
                                 <td>{{ \Carbon\Carbon::parse($e->created_at)->format('d/m/Y H:i') }}</td>
                                 <td>{{ $e->articulo }}</td>
                                 <td>{{ $e->usuario_nombre ?? '—' }}</td>
+
                                 <td>{{ $e->stock > 0 ? 'INGRESO' : 'VENTA' }}</td>
+
+                                <td>
+                                    @if($e->vendido > 0)
+                                        <span class="badge bg-{{ $e->tipo_venta === 'FREEZER' ? 'warning' : 'primary' }}">
+                                            {{ $e->tipo_venta ?? '—' }}
+                                        </span>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+
                                 <td>{{ $e->stock }}</td>
                                 <td>{{ $e->vendido }}</td>
                                 <td>Bs {{ number_format($e->precio_unit ?? 0, 2) }}</td>

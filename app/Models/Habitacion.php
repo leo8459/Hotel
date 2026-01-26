@@ -12,10 +12,22 @@ class Habitacion extends Model
     protected $table = 'habitaciones';
 
     protected $fillable = [
-        'habitacion','tipo',
-        'preciohora','precio_extra',
-        'tarifa_opcion1','tarifa_opcion2','tarifa_opcion3','tarifa_opcion4',
-        'estado','estado_texto','color',
+        'habitacion',
+        'tipo',
+        'preciohora',
+        'precio_extra',
+        'tarifa_opcion1',
+        'tarifa_opcion2',
+        'tarifa_opcion3',
+        'tarifa_opcion4',
+        'estado',
+        'estado_texto',
+        'color',
+                'freezer_stock', // ✅ IMPORTANTE
+
+    ];
+    protected $casts = [
+        'freezer_stock' => 'array',
     ];
 
     /* ───── Relaciones ───── */

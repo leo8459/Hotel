@@ -15,6 +15,7 @@ class Eventos extends Model
         'precio',
         'stock',
         'vendido',
+                'tipo_venta',
         'precio_vendido',       
         'habitacion_id', 
         'inventario_id', // Agregado para la relación       

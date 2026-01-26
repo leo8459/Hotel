@@ -48,6 +48,30 @@
             </div>
 
             <hr>
+            {{-- ✅ Usar Freezer --}}
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="usar_freezer" wire:model="usarFreezer">
+                <label class="form-check-label" for="usar_freezer">
+                    Usar Freezer de la Habitación (igual descuenta del Inventario)
+                </label>
+            </div>
+
+            {{-- ✅ Mostrar freezer actual --}}
+            @if($usarFreezer)
+            <div class="alert alert-info">
+                <strong>Freezer disponible:</strong>
+                <ul class="mb-0">
+                    @forelse($freezerStock as $invId => $qty)
+                    @php $inv = $inventarios->firstWhere('id', (int)$invId); @endphp
+                    <li>
+                        {{ $inv->articulo ?? 'ID '.$invId }}: <strong>{{ (int)$qty }}</strong>
+                    </li>
+                    @empty
+                    <li>No hay productos en el freezer.</li>
+                    @endforelse
+                </ul>
+            </div>
+            @endif
 
             {{-- Inventario --}}
             <div class="mb-2">
