@@ -59,6 +59,59 @@ class CrearAlquiler extends Component
         return sprintf('%02d:%02d:%02d', $h, $m, $s);
     }
 
+    // ✅ Total estimado hasta el momento (habitacion + inventario)
+    public function getTotalActual($alquiler, $habitacion): float
+    {
+        if (!$alquiler || !$habitacion || !$alquiler->entrada) {
+            return 0.0;
+        }
+
+        $totalInventario = 0.0;
+        $detalles = json_decode($alquiler->inventario_detalle, true) ?? [];
+        foreach ($detalles as $key => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $id = $item['id'] ?? (is_numeric($key) ? (int)$key : null);
+            if (!$id) {
+                continue;
+            }
+
+            $cantidad = (int)($item['cantidad'] ?? 1);
+            if ($cantidad < 1) {
+                $cantidad = 1;
+            }
+
+            $inv = Inventario::find($id);
+            if ($inv) {
+                $totalInventario += ((float)$inv->precio) * $cantidad;
+            }
+        }
+
+        if (($alquiler->tarifa_seleccionada ?? null) === 'NOCTURNA') {
+            $totalHoras = (float)($habitacion->tarifa_opcion1 ?? 0);
+            return $totalHoras + $totalInventario;
+        }
+
+        $entrada = Carbon::parse($alquiler->entrada, 'America/La_Paz');
+        $ahora = Carbon::now('America/La_Paz');
+
+        if ($ahora->lessThan($entrada)) {
+            return $totalInventario;
+        }
+
+        $minTot = $entrada->diffInMinutes($ahora);
+        $precioHoras = (float)($habitacion->preciohora ?? 0);
+
+        if ($minTot > 75) {
+            $precioExtra = (float)($habitacion->precio_extra ?? 0);
+            $precioHoras += (intdiv($minTot - 75, 60) + 1) * $precioExtra;
+        }
+
+        return $precioHoras + $totalInventario;
+    }
+
     /** ✅ Cancelar alquiler (EN USO) y restaurar stock */
     public function cancelarAlquiler(int $alquilerId): void
     {

@@ -5,6 +5,7 @@ namespace App\Livewire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Eventos;
+use App\Models\Habitacion;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -100,6 +101,8 @@ class Evento extends Component
             ->selectRaw("
                 eventos.articulo as articulo,
                 MAX(inventarios.articulo) as inventario_nombre,
+                MAX(inventarios.id) as inventario_id,
+                MAX(inventarios.stock) as stock_actual,
 
                 SUM(eventos.stock) as stock_ingresado,
                 SUM(eventos.vendido) as vendido,
@@ -114,14 +117,51 @@ class Evento extends Component
             ->orderByDesc('ultimo_mov');
     }
 
+    private function getFreezerTotales(): array
+    {
+        $totales = [];
+
+        $freezers = Habitacion::query()->pluck('freezer_stock');
+        foreach ($freezers as $freezer) {
+            if (!is_array($freezer)) {
+                continue;
+            }
+
+            foreach ($freezer as $id => $qty) {
+                $id = (int)$id;
+                $qty = (int)$qty;
+                if ($id <= 0 || $qty <= 0) {
+                    continue;
+                }
+
+                $totales[$id] = ($totales[$id] ?? 0) + $qty;
+            }
+        }
+
+        return $totales;
+    }
+
     public function render()
     {
+        $freezerTotales = $this->getFreezerTotales();
+
         $resumen = $this->queryResumen()->get()->map(function ($row) {
             $row->precio_unit = ($row->stock_ingresado > 0)
                 ? ($row->total_ingresado / $row->stock_ingresado)
                 : 0;
 
             $row->ultimo_mov_fmt = Carbon::parse($row->ultimo_mov)->format('d/m/Y H:i');
+            return $row;
+        });
+
+        $resumen = $resumen->map(function ($row) use ($freezerTotales) {
+            $freezerStock = (int)($freezerTotales[$row->inventario_id] ?? 0);
+            $stockActual = (int)($row->stock_actual ?? 0);
+            $stockDisponible = max(0, $stockActual - $freezerStock);
+
+            $row->stock_disponible = $stockDisponible;
+            $row->freezer_stock = $freezerStock;
+            $row->stock_total = $stockDisponible + $freezerStock;
             return $row;
         });
 
@@ -142,12 +182,25 @@ class Evento extends Component
             ->orderBy('eventos.id', 'desc')
             ->get();
 
+        $freezerTotales = $this->getFreezerTotales();
+
         $resumen = $this->queryResumen()->get()->map(function ($row) {
             $row->precio_unit = ($row->stock_ingresado > 0)
                 ? ($row->total_ingresado / $row->stock_ingresado)
                 : 0;
 
             $row->ultimo_mov_fmt = Carbon::parse($row->ultimo_mov)->format('d/m/Y H:i');
+            return $row;
+        });
+
+        $resumen = $resumen->map(function ($row) use ($freezerTotales) {
+            $freezerStock = (int)($freezerTotales[$row->inventario_id] ?? 0);
+            $stockActual = (int)($row->stock_actual ?? 0);
+            $stockDisponible = max(0, $stockActual - $freezerStock);
+
+            $row->stock_disponible = $stockDisponible;
+            $row->freezer_stock = $freezerStock;
+            $row->stock_total = $stockDisponible + $freezerStock;
             return $row;
         });
 

@@ -41,6 +41,9 @@
                             <th>Vendido</th>
                             <th>Total Vendido (Bs)</th>
                             <th>Saldo Stock</th>
+                            <th>Stock Disponible</th>
+                            <th>Freezers Stock</th>
+                            <th>Stock Total</th>
                             <th>Precio Unit. Prom. (Bs)</th>
                             <th>Último Mov.</th>
                         </tr>
@@ -54,6 +57,9 @@
                                 <td>{{ $r->vendido }}</td>
                                 <td>Bs {{ number_format($r->total_vendido, 2) }}</td>
                                 <td><b>{{ $r->saldo_stock }}</b></td>
+                                <td>{{ $r->stock_disponible }}</td>
+                                <td>{{ $r->freezer_stock }}</td>
+                                <td>{{ $r->stock_total }}</td>
                                 <td>Bs {{ number_format($r->precio_unit, 2) }}</td>
                                 <td>{{ $r->ultimo_mov_fmt }}</td>
                             </tr>

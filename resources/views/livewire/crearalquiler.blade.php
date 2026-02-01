@@ -40,6 +40,9 @@
 
                     // ✅ entrada para timer
                     $entradaTimer = $alquiler?->entrada ?? $alquiler?->created_at;
+
+                    // ✅ total estimado
+                    $totalActual = $alquiler ? $this->getTotalActual($alquiler, $hab) : null;
                 @endphp
 
                 <div class="col-12 col-sm-6 col-lg-3">
@@ -58,11 +61,17 @@
 
                             {{-- ✅ TEMPORIZADOR SOLO SI ESTÁ EN USO --}}
                             @if ($hab->estado_texto === 'En uso' && $entradaTimer)
-                                <div class="mt-2">
-                                    <span class="badge bg-dark text-white px-3 py-2">
+                                <div class="mt-2 d-flex flex-column align-items-center gap-1">
+                                    <span class="badge bg-dark text-white px-3 py-2 time-badge">
                                         <i class="bi bi-stopwatch me-1"></i>
                                         Tiempo: {{ $this->getTiempoTranscurrido($entradaTimer) }}
                                     </span>
+                                    @if ($totalActual !== null)
+                                        <span class="badge bg-success text-white px-3 py-2 total-badge">
+                                            <i class="bi bi-cash-coin me-1"></i>
+                                            Total: Bs {{ number_format($totalActual, 2) }}
+                                        </span>
+                                    @endif
                                 </div>
                             @endif
 
@@ -159,6 +168,15 @@
         .house-card:hover {
             transform: translateY(-4px) scale(1.02);
             box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .25);
+        }
+        .time-badge {
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: .3px;
+        }
+        .total-badge {
+            font-size: .95rem;
+            font-weight: 600;
         }
     </style>
 </div>

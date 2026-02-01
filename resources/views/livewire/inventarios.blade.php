@@ -34,7 +34,9 @@
                     <th>Precio Compra</th>
                     <th>Precio Venta</th>
                     <th>Total Compra</th>
-                    <th>Stock</th>
+                    <th>Stock Disponible</th>
+                    <th>Freezers Stock</th>
+                    <th>Stock Total</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
@@ -47,8 +49,14 @@
                         <td>{{ number_format($articulo->precio_entrada, 2) }}</td>
                         <td>{{ number_format($articulo->precio, 2) }}</td>
                         <td>{{ number_format($articulo->total_compra, 2) }}</td>
-
-                        <td>{{ $articulo->stock }}</td>
+                        @php
+                            $freezerStock = (int)($freezerTotales[$articulo->id] ?? 0);
+                            $stockDisponible = max(0, (int)$articulo->stock - $freezerStock);
+                            $stockTotal = $stockDisponible + $freezerStock;
+                        @endphp
+                        <td>{{ $stockDisponible }}</td>
+                        <td>{{ $freezerStock }}</td>
+                        <td>{{ $stockTotal }}</td>
                         <td>
                             <span class="badge {{ $articulo->estado ? 'bg-success' : 'bg-danger' }}">
                                 {{ $articulo->estado ? 'Activo' : 'Inactivo' }}
@@ -57,6 +65,9 @@
                         <td>
                             <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $articulo->id }})">
                                 Editar
+                            </button>
+                            <button class="btn btn-warning btn-sm" wire:click="openSalidaModal({{ $articulo->id }})">
+                                Salida
                             </button>
                             <button class="btn btn-danger btn-sm" wire:click="delete({{ $articulo->id }})">
                                 Eliminar
@@ -82,7 +93,14 @@
                         <p class="card-text">
                             <strong>Precio Compra:</strong> {{ number_format($articulo->precio_entrada, 2) }}<br>
                             <strong>Precio Venta:</strong> {{ number_format($articulo->precio, 2) }}<br>
-                            <strong>Stock:</strong> {{ $articulo->stock }}<br>
+                            @php
+                                $freezerStock = (int)($freezerTotales[$articulo->id] ?? 0);
+                                $stockDisponible = max(0, (int)$articulo->stock - $freezerStock);
+                                $stockTotal = $stockDisponible + $freezerStock;
+                            @endphp
+                            <strong>Stock Disponible:</strong> {{ $stockDisponible }}<br>
+                            <strong>Freezers Stock:</strong> {{ $freezerStock }}<br>
+                            <strong>Stock Total:</strong> {{ $stockTotal }}<br>
                             <strong>Estado:</strong>
                             <span class="badge {{ $articulo->estado ? 'bg-success' : 'bg-danger' }}">
                                 {{ $articulo->estado ? 'Activo' : 'Inactivo' }}
@@ -92,6 +110,9 @@
                         <div class="d-flex justify-content-between">
                             <button class="btn btn-info btn-sm" wire:click="openEditModal({{ $articulo->id }})">
                                 Editar
+                            </button>
+                            <button class="btn btn-warning btn-sm" wire:click="openSalidaModal({{ $articulo->id }})">
+                                Salida
                             </button>
                             <button class="btn btn-danger btn-sm" wire:click="delete({{ $articulo->id }})">
                                 Eliminar
@@ -238,6 +259,31 @@
             </div>
         </div>
 
+        {{-- MODAL SALIDA --}}
+        <div wire:ignore.self class="modal fade" id="salidaArticuloModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Registrar Salida</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" class="form-control" wire:model="salidaCantidad" min="1">
+                            @error('salidaCantidad') <span class="text-danger">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button class="btn btn-warning" wire:click="registrarSalida">Registrar salida</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     {{-- JS MODALES --}}
@@ -250,9 +296,14 @@
             new bootstrap.Modal(document.getElementById('editArticuloModal')).show();
         });
 
+        window.addEventListener('show-salida-modal', () => {
+            new bootstrap.Modal(document.getElementById('salidaArticuloModal')).show();
+        });
+
         window.addEventListener('close-modal', () => {
             bootstrap.Modal.getInstance(document.getElementById('createArticuloModal'))?.hide();
             bootstrap.Modal.getInstance(document.getElementById('editArticuloModal'))?.hide();
+            bootstrap.Modal.getInstance(document.getElementById('salidaArticuloModal'))?.hide();
         });
     </script>
 </section>

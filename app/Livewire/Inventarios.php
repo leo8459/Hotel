@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Inventario;
 use App\Models\Eventos;
+use App\Models\Habitacion;
 use Illuminate\Support\Facades\Auth;
 
 class Inventarios extends Component
@@ -15,6 +16,8 @@ class Inventarios extends Component
     public $searchTerm = '';
     public $articulo, $precio, $stock, $estado, $precio_entrada;
     public $selectedArticuloId = null;
+    public $salidaInventarioId = null;
+    public $salidaCantidad = 0;
 
     // ✅ Totales automáticos
     public $total_compra = 0;
@@ -26,7 +29,9 @@ class Inventarios extends Component
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('livewire.inventarios', compact('articulos'));
+        $freezerTotales = $this->getFreezerTotales();
+
+        return view('livewire.inventarios', compact('articulos', 'freezerTotales'));
     }
 
     // ✅ recalcular cuando cambie compra/venta/stock
@@ -79,6 +84,56 @@ class Inventarios extends Component
     {
         $this->resetInputFields();
         $this->dispatch('show-create-modal');
+    }
+
+    public function openSalidaModal($id)
+    {
+        $articulo = Inventario::find($id);
+        if (!$articulo) {
+            session()->flash('error', 'El artículo no existe.');
+            return;
+        }
+
+        $this->salidaInventarioId = $articulo->id;
+        $this->salidaCantidad = 1;
+        $this->dispatch('show-salida-modal');
+    }
+
+    public function registrarSalida()
+    {
+        $this->validate([
+            'salidaInventarioId' => 'required|integer|exists:inventarios,id',
+            'salidaCantidad'     => 'required|integer|min:1',
+        ]);
+
+        $inventario = Inventario::find($this->salidaInventarioId);
+        if (!$inventario) {
+            session()->flash('error', 'El artículo no existe.');
+            return;
+        }
+
+        if ($inventario->stock < $this->salidaCantidad) {
+            session()->flash('error', "Stock insuficiente. Disponible: {$inventario->stock}");
+            return;
+        }
+
+        $inventario->decrement('stock', $this->salidaCantidad);
+
+        Eventos::create([
+            'articulo'       => $inventario->articulo,
+            'precio'         => 0,
+            'stock'          => 0,
+            'vendido'        => $this->salidaCantidad,
+            'tipo_venta'     => 'SALIDA',
+            'precio_vendido' => 0,
+            'inventario_id'  => $inventario->id,
+            'usuario_id'     => Auth::id(),
+        ]);
+
+        session()->flash('message', 'Salida registrada correctamente.');
+        $this->salidaInventarioId = null;
+        $this->salidaCantidad = 0;
+        $this->dispatch('close-modal');
     }
 
     public function delete($id)
@@ -196,5 +251,29 @@ class Inventarios extends Component
         // ✅ reset totales
         $this->total_compra = 0;
         $this->total_venta = 0;
+    }
+
+    private function getFreezerTotales(): array
+    {
+        $totales = [];
+
+        $freezers = Habitacion::query()->pluck('freezer_stock');
+        foreach ($freezers as $freezer) {
+            if (!is_array($freezer)) {
+                continue;
+            }
+
+            foreach ($freezer as $id => $qty) {
+                $id = (int)$id;
+                $qty = (int)$qty;
+                if ($id <= 0 || $qty <= 0) {
+                    continue;
+                }
+
+                $totales[$id] = ($totales[$id] ?? 0) + $qty;
+            }
+        }
+
+        return $totales;
     }
 }
