@@ -55,7 +55,19 @@
                             $stockTotal = $stockDisponible + $freezerStock;
                         @endphp
                         <td>{{ $stockDisponible }}</td>
-                        <td>{{ $freezerStock }}</td>
+                        <td>
+                                {{ $freezerStock }}
+                            @php $freezerDetalle = $freezerDetalles[$articulo->id] ?? []; @endphp
+                            @if (!empty($freezerDetalle))
+                                      @foreach ($freezerDetalle as $fz)
+                                        <span class="freezer-chip">
+                                            <span class="freezer-chip-label">Hab {{ $fz['hab'] }}</span>
+                                            <span class="freezer-chip-qty">{{ $fz['qty'] }}</span>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </td>
                         <td>{{ $stockTotal }}</td>
                         <td>
                             <span class="badge {{ $articulo->estado ? 'bg-success' : 'bg-danger' }}">
@@ -99,7 +111,23 @@
                                 $stockTotal = $stockDisponible + $freezerStock;
                             @endphp
                             <strong>Stock Disponible:</strong> {{ $stockDisponible }}<br>
-                            <strong>Freezers Stock:</strong> {{ $freezerStock }}<br>
+                            <strong>Freezers Stock:</strong>
+                            <span class="freezer-pill ms-1">
+                                <i class="bi bi-snow2 me-1"></i>
+                                {{ $freezerStock }}
+                            </span>
+                            <br>
+                            @php $freezerDetalle = $freezerDetalles[$articulo->id] ?? []; @endphp
+                            @if (!empty($freezerDetalle))
+                                <small class="freezer-detail d-block mt-1">
+                                    @foreach ($freezerDetalle as $fz)
+                                        <span class="freezer-chip">
+                                            <span class="freezer-chip-label">Hab {{ $fz['hab'] }}</span>
+                                            <span class="freezer-chip-qty">{{ $fz['qty'] }}</span>
+                                        </span>
+                                    @endforeach
+                                </small>
+                            @endif
                             <strong>Stock Total:</strong> {{ $stockTotal }}<br>
                             <strong>Estado:</strong>
                             <span class="badge {{ $articulo->estado ? 'bg-success' : 'bg-danger' }}">
@@ -278,7 +306,8 @@
 
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                        <button class="btn btn-warning" wire:click="registrarSalida">Registrar salida</button>
+                        <button class="btn btn-outline-warning" wire:click="registrarSalida">Salida sin cobro</button>
+                        <button class="btn btn-warning" wire:click="registrarSalidaConCobro">Salida con cobro</button>
                     </div>
                 </div>
             </div>
@@ -306,4 +335,64 @@
             bootstrap.Modal.getInstance(document.getElementById('salidaArticuloModal'))?.hide();
         });
     </script>
+
+    <style>
+        .freezer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .2rem;
+            padding: .25rem .6rem;
+            border-radius: 999px;
+            background: #e6f4ff;
+            color: #0b5ed7;
+            font-weight: 700;
+            border: 1px solid rgba(13, 110, 253, .25);
+        }
+        .freezer-detail {
+            font-size: .8rem;
+            color: #6c757d;
+            font-weight: 600;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .35rem;
+        }
+        .freezer-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .15rem .4rem;
+            border-radius: 999px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            font-weight: 700;
+        }
+        .freezer-chip-label {
+            font-size: .75rem;
+            letter-spacing: .2px;
+            text-transform: uppercase;
+        }
+        .freezer-chip-qty {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 1.2rem;
+            padding: 0 .35rem;
+            border-radius: 999px;
+            background: #0b5ed7;
+            color: #fff;
+            font-size: .75rem;
+          padding: .25rem .6rem;
+            border-radius: 999px;
+            background: #e6f4ff;
+            color: #0b5ed7;
+            font-weight: 700;
+            border: 1px solid rgba(13, 110, 253, .25);
+        }
+        .freezer-detail {
+            font-size: .8rem;
+            color: #6c757d;
+            font-weight: 600;
+        }
+    </style>
 </section>

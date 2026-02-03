@@ -47,7 +47,21 @@
         <td>Bs {{ number_format($r->total_vendido, 2) }}</td>
         <td><b>{{ $r->saldo_stock }}</b></td>
         <td>{{ $r->stock_disponible }}</td>
-        <td>{{ $r->freezer_stock }}</td>
+        <td>
+            <span style="display:inline-block;padding:2px 6px;border-radius:999px;background:#e6f4ff;color:#0b5ed7;font-weight:700;border:1px solid rgba(13,110,253,.25);">
+                {{ $r->freezer_stock }}
+            </span>
+            @if (!empty($r->freezer_detalle))
+                <div class="muted" style="font-weight:600;margin-top:3px;">
+                    @foreach ($r->freezer_detalle as $fz)
+                        <span style="display:inline-block;margin:2px 4px 0 0;padding:2px 6px;border:1px solid #dee2e6;border-radius:999px;background:#f8f9fa;color:#495057;">
+                            Hab {{ $fz['hab'] }}
+                            <span style="display:inline-block;margin-left:4px;padding:0 5px;border-radius:999px;background:#0b5ed7;color:#fff;">{{ $fz['qty'] }}</span>
+                        </span>
+                    @endforeach
+                </div>
+            @endif
+        </td>
         <td>{{ $r->stock_total }}</td>
         <td>Bs {{ number_format($r->precio_unit, 2) }}</td>
         <td>{{ $r->ultimo_mov_fmt }}</td>

@@ -58,7 +58,22 @@
                                 <td>Bs {{ number_format($r->total_vendido, 2) }}</td>
                                 <td><b>{{ $r->saldo_stock }}</b></td>
                                 <td>{{ $r->stock_disponible }}</td>
-                                <td>{{ $r->freezer_stock }}</td>
+                                <td>
+                                    <span class="freezer-pill">
+                                        <i class="bi bi-snow2 me-1"></i>
+                                        {{ $r->freezer_stock }}
+                                    </span>
+                                    @if (!empty($r->freezer_detalle))
+                                        <div class="freezer-detail mt-1">
+                                            @foreach ($r->freezer_detalle as $fz)
+                                                <span class="freezer-chip">
+                                                    <span class="freezer-chip-label">Hab {{ $fz['hab'] }}</span>
+                                                    <span class="freezer-chip-qty">{{ $fz['qty'] }}</span>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </td>
                                 <td>{{ $r->stock_total }}</td>
                                 <td>Bs {{ number_format($r->precio_unit, 2) }}</td>
                                 <td>{{ $r->ultimo_mov_fmt }}</td>
@@ -135,4 +150,52 @@
             @endif
         </div>
     </div>
+    <style>
+    .freezer-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .2rem;
+        padding: .25rem .6rem;
+        border-radius: 999px;
+        background: #e6f4ff;
+        color: #0b5ed7;
+        font-weight: 700;
+        border: 1px solid rgba(13, 110, 253, .25);
+    }
+    .freezer-detail {
+        font-size: .8rem;
+        color: #6c757d;
+        font-weight: 600;
+        display: flex;
+        flex-wrap: wrap;
+        gap: .35rem;
+    }
+    .freezer-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .15rem .4rem;
+        border-radius: 999px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        color: #495057;
+        font-weight: 700;
+    }
+    .freezer-chip-label {
+        font-size: .75rem;
+        letter-spacing: .2px;
+        text-transform: uppercase;
+    }
+    .freezer-chip-qty {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.2rem;
+        padding: 0 .35rem;
+        border-radius: 999px;
+        background: #0b5ed7;
+        color: #fff;
+        font-size: .75rem;
+    }
+    </style>
 </div>

@@ -64,7 +64,7 @@
                                 <div class="mt-2 d-flex flex-column align-items-center gap-1">
                                     <span class="badge bg-dark text-white px-3 py-2 time-badge">
                                         <i class="bi bi-stopwatch me-1"></i>
-                                        Tiempo: {{ $this->getTiempoTranscurrido($entradaTimer) }}
+                                        {{ $this->getTiempoTranscurrido($entradaTimer) }}
                                     </span>
                                     @if ($totalActual !== null)
                                         <span class="badge bg-success text-white px-3 py-2 total-badge">
@@ -170,8 +170,8 @@
             box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .25);
         }
         .time-badge {
-            font-size: 1.05rem;
-            font-weight: 600;
+            font-size: 1.5rem;
+            font-weight: 700;
             letter-spacing: .3px;
         }
         .total-badge {

@@ -141,9 +141,41 @@ class Evento extends Component
         return $totales;
     }
 
+    private function getFreezerDetalles(): array
+    {
+        $detalles = [];
+
+        $habitaciones = Habitacion::query()->select('id', 'habitacion', 'freezer_stock')->get();
+        foreach ($habitaciones as $hab) {
+            $freezer = $hab->freezer_stock;
+            if (!is_array($freezer)) {
+                continue;
+            }
+
+            $habLabel = trim((string)($hab->habitacion ?? ''));
+            $habLabel = $habLabel !== '' ? $habLabel : 'ID ' . $hab->id;
+
+            foreach ($freezer as $id => $qty) {
+                $id = (int)$id;
+                $qty = (int)$qty;
+                if ($id <= 0 || $qty <= 0) {
+                    continue;
+                }
+
+                $detalles[$id][] = [
+                    'hab' => $habLabel,
+                    'qty' => $qty,
+                ];
+            }
+        }
+
+        return $detalles;
+    }
+
     public function render()
     {
         $freezerTotales = $this->getFreezerTotales();
+        $freezerDetalles = $this->getFreezerDetalles();
 
         $resumen = $this->queryResumen()->get()->map(function ($row) {
             $row->precio_unit = ($row->stock_ingresado > 0)
@@ -154,7 +186,7 @@ class Evento extends Component
             return $row;
         });
 
-        $resumen = $resumen->map(function ($row) use ($freezerTotales) {
+        $resumen = $resumen->map(function ($row) use ($freezerTotales, $freezerDetalles) {
             $freezerStock = (int)($freezerTotales[$row->inventario_id] ?? 0);
             $stockActual = (int)($row->stock_actual ?? 0);
             $stockDisponible = max(0, $stockActual - $freezerStock);
@@ -162,6 +194,7 @@ class Evento extends Component
             $row->stock_disponible = $stockDisponible;
             $row->freezer_stock = $freezerStock;
             $row->stock_total = $stockDisponible + $freezerStock;
+            $row->freezer_detalle = $freezerDetalles[$row->inventario_id] ?? [];
             return $row;
         });
 
@@ -183,6 +216,7 @@ class Evento extends Component
             ->get();
 
         $freezerTotales = $this->getFreezerTotales();
+        $freezerDetalles = $this->getFreezerDetalles();
 
         $resumen = $this->queryResumen()->get()->map(function ($row) {
             $row->precio_unit = ($row->stock_ingresado > 0)
@@ -193,7 +227,7 @@ class Evento extends Component
             return $row;
         });
 
-        $resumen = $resumen->map(function ($row) use ($freezerTotales) {
+        $resumen = $resumen->map(function ($row) use ($freezerTotales, $freezerDetalles) {
             $freezerStock = (int)($freezerTotales[$row->inventario_id] ?? 0);
             $stockActual = (int)($row->stock_actual ?? 0);
             $stockDisponible = max(0, $stockActual - $freezerStock);
@@ -201,6 +235,7 @@ class Evento extends Component
             $row->stock_disponible = $stockDisponible;
             $row->freezer_stock = $freezerStock;
             $row->stock_total = $stockDisponible + $freezerStock;
+            $row->freezer_detalle = $freezerDetalles[$row->inventario_id] ?? [];
             return $row;
         });
 

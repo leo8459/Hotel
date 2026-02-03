@@ -31,7 +31,9 @@ class Inventarios extends Component
 
         $freezerTotales = $this->getFreezerTotales();
 
-        return view('livewire.inventarios', compact('articulos', 'freezerTotales'));
+        $freezerDetalles = $this->getFreezerDetalles();
+
+        return view('livewire.inventarios', compact('articulos', 'freezerTotales', 'freezerDetalles'));
     }
 
     // ✅ recalcular cuando cambie compra/venta/stock
@@ -101,6 +103,16 @@ class Inventarios extends Component
 
     public function registrarSalida()
     {
+        $this->registrarSalidaInterna(false);
+    }
+
+    public function registrarSalidaConCobro()
+    {
+        $this->registrarSalidaInterna(true);
+    }
+
+    private function registrarSalidaInterna(bool $conCobro): void
+    {
         $this->validate([
             'salidaInventarioId' => 'required|integer|exists:inventarios,id',
             'salidaCantidad'     => 'required|integer|min:1',
@@ -108,7 +120,7 @@ class Inventarios extends Component
 
         $inventario = Inventario::find($this->salidaInventarioId);
         if (!$inventario) {
-            session()->flash('error', 'El artículo no existe.');
+            session()->flash('error', 'El art?culo no existe.');
             return;
         }
 
@@ -119,18 +131,21 @@ class Inventarios extends Component
 
         $inventario->decrement('stock', $this->salidaCantidad);
 
+        $precioVendido = $conCobro ? ($inventario->precio * $this->salidaCantidad) : 0;
+        $tipoVenta = $conCobro ? 'VENTA' : 'SALIDA';
+
         Eventos::create([
             'articulo'       => $inventario->articulo,
             'precio'         => 0,
             'stock'          => 0,
             'vendido'        => $this->salidaCantidad,
-            'tipo_venta'     => 'SALIDA',
-            'precio_vendido' => 0,
+            'tipo_venta'     => $tipoVenta,
+            'precio_vendido' => $precioVendido,
             'inventario_id'  => $inventario->id,
             'usuario_id'     => Auth::id(),
         ]);
 
-        session()->flash('message', 'Salida registrada correctamente.');
+        session()->flash('message', $conCobro ? 'Salida con cobro registrada correctamente.' : 'Salida registrada correctamente.');
         $this->salidaInventarioId = null;
         $this->salidaCantidad = 0;
         $this->dispatch('close-modal');
@@ -275,5 +290,36 @@ class Inventarios extends Component
         }
 
         return $totales;
+    }
+
+    private function getFreezerDetalles(): array
+    {
+        $detalles = [];
+
+        $habitaciones = Habitacion::query()->select('id', 'habitacion', 'freezer_stock')->get();
+        foreach ($habitaciones as $hab) {
+            $freezer = $hab->freezer_stock;
+            if (!is_array($freezer)) {
+                continue;
+            }
+
+            $habLabel = trim((string)($hab->habitacion ?? ''));
+            $habLabel = $habLabel !== '' ? $habLabel : 'ID ' . $hab->id;
+
+            foreach ($freezer as $id => $qty) {
+                $id = (int)$id;
+                $qty = (int)$qty;
+                if ($id <= 0 || $qty <= 0) {
+                    continue;
+                }
+
+                $detalles[$id][] = [
+                    'hab' => $habLabel,
+                    'qty' => $qty,
+                ];
+            }
+        }
+
+        return $detalles;
     }
 }
