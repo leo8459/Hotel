@@ -18,6 +18,33 @@ class CrearAlquiler extends Component
     public $fechaInicio;
     public $fechaFin;
 
+    public function turnoActivo(): bool
+    {
+        $usuario = auth()->user();
+
+        if (!$usuario || !$usuario->hora_entrada_trabajo) {
+            return false;
+        }
+
+        if (!$usuario->hora_salida_trabajo) {
+            return true;
+        }
+
+        return Carbon::parse($usuario->hora_entrada_trabajo, 'America/La_Paz')
+            ->greaterThan(Carbon::parse($usuario->hora_salida_trabajo, 'America/La_Paz'));
+    }
+
+    public function getTiempoTurno(): string
+    {
+        $usuario = auth()->user();
+
+        if (!$this->turnoActivo() || !$usuario?->hora_entrada_trabajo) {
+            return '00:00:00';
+        }
+
+        return $this->getTiempoTranscurrido($usuario->hora_entrada_trabajo);
+    }
+
     // ✅ Mapa: habitacion_id => alquiler activo
     // public $alquileresActivos = [];
 
@@ -28,6 +55,12 @@ class CrearAlquiler extends Component
 
     public function alquilar(int $id): void
     {
+        if (!$this->turnoActivo()) {
+            $this->dispatch('toast', type: 'error', message: 'Debes iniciar tu turno antes de alquilar.');
+            session()->flash('error', 'Debes iniciar tu turno antes de alquilar.');
+            return;
+        }
+
         $hab = Habitacion::findOrFail($id);
 
         if (in_array($hab->estado_texto, ['En uso', 'En limpieza', 'Mantenimiento', 'Pagado'])) {
@@ -172,7 +205,8 @@ class CrearAlquiler extends Component
     {
         $usuario = auth()->user();
         $usuario->update([
-            'hora_entrada_trabajo' => Carbon::now('America/La_Paz')
+            'hora_entrada_trabajo' => Carbon::now('America/La_Paz'),
+            'hora_salida_trabajo' => null,
         ]);
 
         session()->flash('message', 'Has iniciado tu turno a las ' . Carbon::now('America/La_Paz')->format('H:i:s'));
@@ -180,6 +214,11 @@ class CrearAlquiler extends Component
 
     public function finalizarTrabajo()
     {
+        if (!$this->turnoActivo()) {
+            session()->flash('error', 'No tienes un turno activo para finalizar.');
+            return;
+        }
+
         $usuario = auth()->user();
         $usuario->update([
             'hora_salida_trabajo' => Carbon::now('America/La_Paz')
@@ -219,7 +258,7 @@ class CrearAlquiler extends Component
         return response()->streamDownload(fn() => print($pdfContent), $nombreArchivo);
     }
 
-  public function render()
+ public function render()
 {
     // Recargar habitaciones (para que el poll refresque estados)
     $this->habitaciones = Habitacion::orderBy('habitacion')->get();
@@ -233,6 +272,8 @@ class CrearAlquiler extends Component
     return view('livewire.crearalquiler', [
         'habitaciones'      => $this->habitaciones,
         'alquileresActivos' => $activos,
+        'turnoActivo'       => $this->turnoActivo(),
+        'tiempoTurno'       => $this->getTiempoTurno(),
     ])
         ->extends('adminlte::page')
         ->section('content');

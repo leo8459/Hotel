@@ -1,5 +1,7 @@
 @extends('adminlte::page')
+
 @section('title', 'Dashboard')
+
 @section('template_title')
 Sistema de EMS AGBC
 @endsection
@@ -8,4 +10,3 @@ Sistema de EMS AGBC
 @livewire('dashboardgeneral')
 @include('footer')
 @endsection
-@section('js')

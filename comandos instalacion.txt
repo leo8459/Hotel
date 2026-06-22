@@ -1,0 +1,33 @@
+COMANDOS DE INSTALACION - PROYECTO HOTEL
+
+1. Abrir XAMPP y encender Apache y MySQL
+
+2. Entrar a la carpeta del proyecto
+cd C:\xampp\htdocs\Hotel
+
+3. Instalar dependencias PHP
+composer install
+
+4. Instalar dependencias Node
+npm install
+
+5. Compilar assets
+npm run build
+
+6. Crear la base de datos si no existe
+C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS hotel;"
+
+7. Importar la base inicial si hace falta
+C:\xampp\mysql\bin\mysql.exe -u root hotel < base.sql
+
+8. Verificar migraciones
+php artisan migrate:status
+
+9. Optimizar Laravel
+php artisan optimize
+
+10. Iniciar el servidor
+php artisan serve --host=127.0.0.1 --port=8080
+
+URL del sistema:
+http://127.0.0.1:8080

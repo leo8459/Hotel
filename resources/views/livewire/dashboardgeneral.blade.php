@@ -1,4 +1,4 @@
-<div class="dashboard">
+<div class="dashboard" wire:poll.15s>
     <style>
         .dashboard {
             display: flex;
@@ -85,13 +85,11 @@
         }
 
         .icon-generated { background: linear-gradient(45deg, #3F51B5, #2196F3); }
-
-        /* Estados */
-        .icon-uso { background: linear-gradient(45deg, #FF5722, #FFC107); }         /* En uso */
-        .icon-disponible { background: linear-gradient(45deg, #4CAF50, #8BC34A); }  /* Disponible */
-        .icon-limpieza { background: linear-gradient(45deg, #2196F3, #03A9F4); }    /* En limpieza */
-        .icon-mantenimiento { background: linear-gradient(45deg, #9E9E9E, #616161);}/* Mantenimiento */
-        .icon-pagado { background: linear-gradient(45deg, #FFD54F, #FFB300); }      /* Pagado */
+        .icon-uso { background: linear-gradient(45deg, #FF5722, #FFC107); }
+        .icon-disponible { background: linear-gradient(45deg, #4CAF50, #8BC34A); }
+        .icon-limpieza { background: linear-gradient(45deg, #2196F3, #03A9F4); }
+        .icon-mantenimiento { background: linear-gradient(45deg, #9E9E9E, #616161); }
+        .icon-pagado { background: linear-gradient(45deg, #FFD54F, #FFB300); }
 
         .room-card {
             background: #ffffff;
@@ -104,10 +102,12 @@
             align-items: center;
             justify-content: center;
             transition: transform 0.2s, box-shadow 0.2s;
-            width: 150px;
+            width: 170px;
+            cursor: pointer;
         }
 
-        .room-card:hover {
+        .room-card:hover,
+        .room-card.is-active {
             transform: translateY(-5px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         }
@@ -124,89 +124,113 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             margin-bottom: 8px;
         }
+
+        .room-status {
+            font-size: 0.85rem;
+            color: #777;
+            margin-top: 4px;
+        }
+
+        .action-panel {
+            margin-top: 10px;
+            width: 100%;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-panel .btn {
+            width: 100%;
+        }
     </style>
 
-    <!-- Total Generado -->
+    @if (session()->has('message'))
+        <div class="alert alert-success w-100" style="max-width: 1200px;">
+            {{ session('message') }}
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div class="alert alert-danger w-100" style="max-width: 1200px;">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <div class="card-container">
         <div class="card-content">
             <p class="card-title">Total Generado</p>
             <p class="card-value">Bs{{ number_format($totalGenerado, 2) }}</p>
         </div>
-        <div class="card-icon icon-generated">💰</div>
+        <div class="card-icon icon-generated">$</div>
     </div>
 
-    <!-- En uso -->
-    <div class="section-container">
-        <div class="section-title">En uso ({{ count($enUso) }})</div>
-        <div class="horizontal-container">
-            @forelse ($enUso as $habitacion)
-                <div class="room-card">
-                    <div class="room-icon icon-uso">🏠</div>
-                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
-                </div>
-            @empty
-                <p>No hay habitaciones en uso.</p>
-            @endforelse
-        </div>
-    </div>
+    @foreach ($sections as $section)
+        <div class="section-container">
+            <div class="section-title">{{ $section['title'] }} ({{ count($section['rooms']) }})</div>
+            <div class="horizontal-container">
+                @forelse ($section['rooms'] as $habitacion)
+                    @php
+                        $alquiler = $alquileresActivos[$habitacion->id] ?? null;
+                        $bloqueado = in_array($habitacion->estado_texto, ['En uso', 'En limpieza', 'Mantenimiento', 'Pagado']);
+                        $selected = $selectedHabitacionId === $habitacion->id;
+                    @endphp
 
-    <!-- Disponibles -->
-    <div class="section-container">
-        <div class="section-title">Disponibles ({{ count($disponibles) }})</div>
-        <div class="horizontal-container">
-            @forelse ($disponibles as $habitacion)
-                <div class="room-card">
-                    <div class="room-icon icon-disponible">🛏️</div>
-                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
-                </div>
-            @empty
-                <p>No hay habitaciones disponibles.</p>
-            @endforelse
-        </div>
-    </div>
+                    <div class="room-card {{ $selected ? 'is-active' : '' }}"
+                         wire:click="toggleHabitacion({{ $habitacion->id }})">
+                        <div class="room-icon {{ $section['iconClass'] }}">{{ $section['icon'] }}</div>
+                        <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
+                        <div class="room-status">{{ $habitacion->estado_texto }}</div>
 
-    <!-- En limpieza -->
-    <div class="section-container">
-        <div class="section-title">En limpieza ({{ count($enLimpieza) }})</div>
-        <div class="horizontal-container">
-            @forelse ($enLimpieza as $habitacion)
-                <div class="room-card">
-                    <div class="room-icon icon-limpieza">🧽</div>
-                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
-                </div>
-            @empty
-                <p>No hay habitaciones en limpieza.</p>
-            @endforelse
-        </div>
-    </div>
+                        @if ($selected)
+                            <div class="action-panel">
+                                <a href="{{ route('habitacion.estado', $habitacion->id) }}"
+                                   class="btn btn-outline-primary btn-sm"
+                                   onclick="event.stopPropagation();">
+                                    Estado
+                                </a>
 
-    <!-- Mantenimiento -->
-    <div class="section-container">
-        <div class="section-title">Mantenimiento ({{ count($mantenimiento) }})</div>
-        <div class="horizontal-container">
-            @forelse ($mantenimiento as $habitacion)
-                <div class="room-card">
-                    <div class="room-icon icon-mantenimiento">🛠️</div>
-                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
-                </div>
-            @empty
-                <p>No hay habitaciones en mantenimiento.</p>
-            @endforelse
-        </div>
-    </div>
+                                @if (!$bloqueado)
+                                    <a href="{{ route('alquiler.crear', $habitacion->id) }}"
+                                       class="btn btn-success btn-sm"
+                                       onclick="event.stopPropagation();">
+                                        Alquilar
+                                    </a>
+                                @else
+                                    <button class="btn btn-secondary btn-sm" disabled>
+                                        No disponible
+                                    </button>
+                                @endif
 
-    <!-- Pagado -->
-    <div class="section-container">
-        <div class="section-title">Pagado ({{ count($pagado) }})</div>
-        <div class="horizontal-container">
-            @forelse ($pagado as $habitacion)
-                <div class="room-card">
-                    <div class="room-icon icon-pagado">✅</div>
-                    <div class="card-title">Hab. {{ $habitacion->habitacion }}</div>
-                </div>
-            @empty
-                <p>No hay habitaciones en estado pagado.</p>
-            @endforelse
+                                @if ($alquiler)
+                                    <a href="{{ route('editar-alquiler', $alquiler->id) }}"
+                                       class="btn btn-warning btn-sm"
+                                       onclick="event.stopPropagation();">
+                                        Anadir producto
+                                    </a>
+
+                                    <a href="{{ route('pagar-alquiler', $alquiler->id) }}"
+                                       class="btn btn-success btn-sm"
+                                       onclick="event.stopPropagation();">
+                                        Pagar alquiler
+                                    </a>
+                                @endif
+
+                                @if ($alquiler && $habitacion->estado_texto === 'En uso')
+                                    <button type="button"
+                                            class="btn btn-danger btn-sm"
+                                            wire:click.stop="cancelarAlquiler({{ $alquiler->id }})">
+                                        Cancelar alquiler
+                                    </button>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                @empty
+                    <p>{{ $section['empty'] }}</p>
+                @endforelse
+            </div>
         </div>
-    </div>
+    @endforeach
 </div>

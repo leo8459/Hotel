@@ -2,64 +2,139 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
+use App\Models\Alquiler;
 use App\Models\Habitacion;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class Dashboardgeneral extends Component
 {
-    // Listas por estado
-    public $enUso = [];
-    public $disponibles = [];
-    public $enLimpieza = [];
-    public $mantenimiento = [];
-    public $pagado = [];
+    public $selectedHabitacionId = null;
 
-    // Métrica
-    public $totalGenerado = 0;
-
-    public function mount()
+    public function toggleHabitacion(int $habitacionId): void
     {
-        // Cargar estados por texto (según tu modelo Habitacion.estado_texto)
-        $this->enUso       = $this->getByEstadoTexto('En uso');
-        $this->disponibles = $this->getByEstadoTexto('Disponible');
-        $this->enLimpieza  = $this->getByEstadoTexto('En limpieza');
-        $this->mantenimiento = $this->getByEstadoTexto('Mantenimiento');
-        $this->pagado      = $this->getByEstadoTexto('Pagado');
-
-        // Total generado por alquileres pagados
-        $this->totalGenerado = $this->getTotalGenerado();
+        $this->selectedHabitacionId = $this->selectedHabitacionId === $habitacionId
+            ? null
+            : $habitacionId;
     }
 
-    /**
-     * Retorna habitaciones por estado_texto.
-     */
-    private function getByEstadoTexto(string $estadoTexto)
+    public function cancelarAlquiler(int $alquilerId): void
     {
-        return Habitacion::where('estado_texto', $estadoTexto)
-            ->orderBy('habitacion')
-            ->get();
+        try {
+            DB::transaction(function () use ($alquilerId) {
+                $alquiler = Alquiler::lockForUpdate()->findOrFail($alquilerId);
+
+                if ($alquiler->estado !== 'alquilado') {
+                    abort(400, 'El alquiler no esta activo.');
+                }
+
+                $detalle = json_decode($alquiler->inventario_detalle, true) ?? [];
+                foreach ($detalle as $invId => $item) {
+                    $cantidad = (int) ($item['cantidad'] ?? 0);
+                    if ($cantidad < 1) {
+                        continue;
+                    }
+
+                    DB::table('inventarios')
+                        ->where('id', $invId)
+                        ->increment('stock', $cantidad);
+                }
+
+                $alquiler->update([
+                    'tipoingreso' => null,
+                    'tipopago' => null,
+                    'aireacondicionado' => null,
+                    'entrada' => null,
+                    'salida' => null,
+                    'horas' => null,
+                    'total' => null,
+                    'inventario_detalle' => null,
+                    'tarifa_seleccionada' => null,
+                    'aire_inicio' => null,
+                    'aire_fin' => null,
+                    'inventario_id' => null,
+                    'usuario_id' => null,
+                    'estado' => 'disponible',
+                ]);
+
+                Habitacion::whereKey($alquiler->habitacion_id)->update([
+                    'estado' => 1,
+                    'estado_texto' => 'Disponible',
+                    'color' => 'bg-success text-white',
+                ]);
+            });
+
+            $this->selectedHabitacionId = null;
+            session()->flash('message', 'Alquiler cancelado y habitacion liberada.');
+        } catch (\Throwable $e) {
+            session()->flash('error', 'No se pudo cancelar el alquiler: ' . $e->getMessage());
+        }
     }
 
-    /**
-     * Calcula el total generado por los alquileres pagados.
-     */
-    private function getTotalGenerado()
+    private function buildSections(Collection $habitaciones): array
     {
-        return DB::table('alquiler')
-            ->where('estado', 'pagado')
-            ->sum(DB::raw('COALESCE(total, 0)'));
+        return [
+            [
+                'title' => 'En uso',
+                'rooms' => $habitaciones->where('estado_texto', 'En uso')->values(),
+                'iconClass' => 'icon-uso',
+                'icon' => 'H',
+                'empty' => 'No hay habitaciones en uso.',
+            ],
+            [
+                'title' => 'Disponibles',
+                'rooms' => $habitaciones->where('estado_texto', 'Disponible')->values(),
+                'iconClass' => 'icon-disponible',
+                'icon' => 'C',
+                'empty' => 'No hay habitaciones disponibles.',
+            ],
+            [
+                'title' => 'En limpieza',
+                'rooms' => $habitaciones->where('estado_texto', 'En limpieza')->values(),
+                'iconClass' => 'icon-limpieza',
+                'icon' => 'L',
+                'empty' => 'No hay habitaciones en limpieza.',
+            ],
+            [
+                'title' => 'Mantenimiento',
+                'rooms' => $habitaciones->where('estado_texto', 'Mantenimiento')->values(),
+                'iconClass' => 'icon-mantenimiento',
+                'icon' => 'M',
+                'empty' => 'No hay habitaciones en mantenimiento.',
+            ],
+            [
+                'title' => 'Pagado',
+                'rooms' => $habitaciones->where('estado_texto', 'Pagado')->values(),
+                'iconClass' => 'icon-pagado',
+                'icon' => 'P',
+                'empty' => 'No hay habitaciones en estado pagado.',
+            ],
+        ];
     }
 
     public function render()
     {
+        $habitaciones = Habitacion::query()
+            ->select(['id', 'habitacion', 'estado_texto', 'color'])
+            ->orderBy('habitacion')
+            ->get();
+
+        $alquileresActivos = DB::table('alquiler')
+            ->select(['id', 'habitacion_id', 'estado'])
+            ->whereIn('estado', ['alquilado', 'pagado'])
+            ->orderByDesc('entrada')
+            ->get()
+            ->keyBy('habitacion_id');
+
+        $totalGenerado = DB::table('alquiler')
+            ->where('estado', 'pagado')
+            ->sum('total');
+
         return view('livewire.dashboardgeneral', [
-            'enUso'        => $this->enUso,
-            'disponibles'  => $this->disponibles,
-            'enLimpieza'   => $this->enLimpieza,
-            'mantenimiento'=> $this->mantenimiento,
-            'pagado'       => $this->pagado,
-            'totalGenerado'=> $this->totalGenerado,
+            'sections' => $this->buildSections($habitaciones),
+            'alquileresActivos' => $alquileresActivos,
+            'totalGenerado' => $totalGenerado,
         ]);
     }
 }

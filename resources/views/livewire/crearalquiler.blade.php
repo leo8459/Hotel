@@ -20,6 +20,21 @@
             </button>
         </div>
 
+        <div class="mb-4">
+            @if ($turnoActivo)
+                <div class="alert alert-success d-flex flex-wrap justify-content-between align-items-center gap-2 mb-0">
+                    <span><strong>Turno activo.</strong> Ya puedes alquilar habitaciones.</span>
+                    <span class="badge bg-dark px-3 py-2 turno-badge">
+                        Tiempo de turno: {{ $tiempoTurno }}
+                    </span>
+                </div>
+            @else
+                <div class="alert alert-warning mb-0">
+                    <strong>Turno no iniciado.</strong> Debes presionar <strong>Iniciar Turno</strong> antes de alquilar.
+                </div>
+            @endif
+        </div>
+
         {{-- Habitaciones --}}
         <div class="row g-4">
             @foreach ($habitaciones as $hab)
@@ -48,7 +63,7 @@
                 <div class="col-12 col-sm-6 col-lg-3">
                     <div wire:click="alquilar({{ $hab->id }})"
                          class="house-card {{ $hab->color }} shadow"
-                         style="cursor:pointer;">
+                         style="cursor:{{ $turnoActivo ? 'pointer' : 'not-allowed' }};">
 
                         <span class="badge rounded-pill position-absolute top-0 end-0 m-2 {{ $badgeClass }}">
                             {{ $hab->estado_texto }}
@@ -97,12 +112,16 @@
                         </div>
 
                         <div class="hotel-footer bg-light text-center py-2">
-                            @if (!$bloqueado)
+                            @if (!$bloqueado && $turnoActivo)
                                 <a href="{{ route('alquiler.crear', $hab->id) }}"
                                    class="btn btn-outline-light text-dark btn-sm fw-bold"
                                    onclick="event.stopPropagation();">
                                     Alquilar
                                 </a>
+                            @elseif (!$turnoActivo)
+                                <button class="btn btn-outline-secondary btn-sm fw-bold" disabled>
+                                    Inicia tu turno
+                                </button>
                             @else
                                 <button class="btn btn-outline-light text-muted btn-sm fw-bold" disabled>
                                     No disponible
@@ -177,6 +196,10 @@
         .total-badge {
             font-size: .95rem;
             font-weight: 600;
+        }
+        .turno-badge {
+            font-size: 1rem;
+            letter-spacing: .5px;
         }
     </style>
 </div>

@@ -35,6 +35,10 @@ Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::get('/monitoring', function () {
+    return view('monitoring');
+})->middleware(['auth', 'verified'])->name('monitoring');
+
 Route::middleware('auth')->group(function () {
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
@@ -74,7 +78,7 @@ Route::middleware('auth')->group(function () {
     // Route::get('/role-has-permission/{roleHasPermission}', [RoleHasPermissionController::class, 'show'])->name('role-has-permissions.show');
     Route::post('/role-has-permission', [RoleHasPermissionController::class, 'store'])->name('role-has-permissions.store');
     Route::get('/role-has-permission/{roleHasPermission}/edit', [RoleHasPermissionController::class, 'edit'])->name('role-has-permissions.edit');
-    Route::put('/role-has-permission/{roleHasPermission', [RoleHasPermissionController::class, 'update'])->name('role-has-permissions.update');
+    Route::put('/role-has-permission/{roleHasPermission}', [RoleHasPermissionController::class, 'update'])->name('role-has-permissions.update');
     Route::delete('/role-has-permission/{roleHasPermission}', [RoleHasPermissionController::class, 'destroy'])->name('role-has-permissions.destroy');
 
 
@@ -92,49 +96,31 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::get('/inventarios', [InventarioController::class, 'obtenerinventario']);
-    Route::get('/crearalquiler', [AlquilerController::class, 'alquiler'])
+    Route::match(['get', 'post'], '/crearalquiler', [AlquilerController::class, 'alquiler'])
         ->name('crear-alquiler');
 
-    Route::get('/editaralquiler/{alquiler}', Editaralquiler::class)
+    Route::match(['get', 'post'], '/editaralquiler/{alquiler}', Editaralquiler::class)
         ->name('editar-alquiler');
-    Route::get('/pagaralquiler/{alquiler}', Pagaralquiler::class)
+    Route::match(['get', 'post'], '/pagaralquiler/{alquiler}', Pagaralquiler::class)
         ->name('pagar-alquiler');
 
     //DASHBOARD
     Route::get('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);
 
-    Route::get('/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
+    Route::match(['get', 'post'], '/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
         ->name('habitacion.estado');
 
 
 
-    Route::get('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
+    Route::match(['get', 'post'], '/alquiler/crear/{habitacion?}', AlquilerCrear::class)
         ->name('alquiler.crear');
 
 
     Route::post('/habitaciones', [HabitacionesController::class, 'obtenerhabitaciones']);
     Route::post('/inventarios', [InventarioController::class, 'obtenerinventario']);
-    Route::post('/crearalquiler', [AlquilerController::class, 'alquiler'])
-        ->name('crear-alquiler');
-
-    Route::post('/editaralquiler/{alquiler}', Editaralquiler::class)
-        ->name('editar-alquiler');
-    Route::post('/pagaralquiler/{alquiler}', Pagaralquiler::class)
-        ->name('pagar-alquiler');
-
     //DASHBOARD
     Route::post('/dashboardgeneral', [InventarioController::class, 'obtenerdashboard']);
-
-    Route::post('/habitaciones/{habitacion}/estado', HabitacionCambiarEstado::class)
-        ->name('habitacion.estado');
-
-
-
-    Route::post('/alquiler/crear/{habitacion?}', AlquilerCrear::class)
-        ->name('alquiler.crear');
 });
-Route::get('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
-    ->name('boleta.show');
-Route::post('/boleta/{id}', [\App\Http\Livewire\Alquileres::class, 'generarBoleta'])
+Route::match(['get', 'post'], '/boleta/{id}', [\App\Livewire\Alquileres::class, 'generarBoleta'])
     ->name('boleta.show');
 require __DIR__ . '/auth.php';

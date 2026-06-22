@@ -371,16 +371,9 @@ return [
             ],
         ],
         [
-            'text' => 'Rendimiento',
-            'url' => '/pulse',
-
-            'icon' => 'fas fa-user',
-        ],
-        [
-            'text' => 'Logs',
-            'url' => '/log-viewer',
-
-            'icon' => 'fas fa-user',
+            'text' => 'Monitoreo',
+            'url' => '/monitoring',
+            'icon' => 'fas fa-chart-line',
         ],
           [
             'text' => 'Inventario movimientos',
