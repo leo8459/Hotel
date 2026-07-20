@@ -15,7 +15,7 @@ class User extends Authenticatable
 
     public function adminlte_image()
     {
-        return asset('images/AGBClogo.png');
+        return null;
     }
     public function adminlte_desc()
     {

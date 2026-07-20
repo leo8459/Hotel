@@ -9,8 +9,7 @@
             margin: 0;
             padding: 0;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: url('/images/LOGO.png') no-repeat center center fixed;
-            background-size: cover;
+            background: #f4f6f9;
         }
 
         .login-container {
@@ -23,7 +22,7 @@
         }
 
         .card-view {
-            background: #0056B3; /* Fondo azul EMS */
+            background: #0056B3;
             padding: 40px;
             border-radius: 15px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);

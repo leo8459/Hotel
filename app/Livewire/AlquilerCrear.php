@@ -18,6 +18,22 @@ class AlquilerCrear extends Component
 
     public array $tiposIngreso = ['Auto', 'Peatón', 'Reservación', 'Moto'];
 
+    public function turnoActivo(): bool
+    {
+        $usuario = auth()->user();
+
+        if (!$usuario || !$usuario->hora_entrada_trabajo) {
+            return false;
+        }
+
+        if (!$usuario->hora_salida_trabajo) {
+            return true;
+        }
+
+        return Carbon::parse($usuario->hora_entrada_trabajo, 'America/La_Paz')
+            ->greaterThan(Carbon::parse($usuario->hora_salida_trabajo, 'America/La_Paz'));
+    }
+
     /* ─── Ciclo de vida ─── */
     public function mount(?Habitacion $habitacion = null): void
     {
@@ -41,6 +57,12 @@ class AlquilerCrear extends Component
     /* ─── Guardar ─── */
     public function guardar()
     {
+        if (!$this->turnoActivo()) {
+            session()->flash('error', 'Debes iniciar tu turno antes de alquilar.');
+
+            return redirect()->route('crear-alquiler');
+        }
+
         $this->validate();
 
         /* 1. Crear el registro de alquiler */

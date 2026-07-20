@@ -93,7 +93,7 @@ class CrearAlquiler extends Component
     }
 
     // ✅ Total estimado hasta el momento (habitacion + inventario)
-    public function getTotalActual($alquiler, $habitacion): float
+    public function getTotalActual($alquiler, $habitacion, array $preciosInventario = []): float
     {
         if (!$alquiler || !$habitacion || !$alquiler->entrada) {
             return 0.0;
@@ -116,9 +116,8 @@ class CrearAlquiler extends Component
                 $cantidad = 1;
             }
 
-            $inv = Inventario::find($id);
-            if ($inv) {
-                $totalInventario += ((float)$inv->precio) * $cantidad;
+            if (isset($preciosInventario[$id])) {
+                $totalInventario += ((float)$preciosInventario[$id]) * $cantidad;
             }
         }
 
@@ -258,25 +257,76 @@ class CrearAlquiler extends Component
         return response()->streamDownload(fn() => print($pdfContent), $nombreArchivo);
     }
 
- public function render()
-{
-    // Recargar habitaciones (para que el poll refresque estados)
-    $this->habitaciones = Habitacion::orderBy('habitacion')->get();
 
-    // ✅ Colección keyBy(habitacion_id) (NO toArray)
-    $activos = Alquiler::where('estado', 'alquilado')
-        ->orderBy('entrada', 'desc')
-        ->get()
-        ->keyBy('habitacion_id');
+    public function render()
+    {
+        $habitaciones = Habitacion::query()
+            ->select([
+                'id',
+                'habitacion',
+                'tipo',
+                'estado_texto',
+                'color',
+                'preciohora',
+                'precio_extra',
+                'tarifa_opcion1',
+            ])
+            ->orderBy('habitacion')
+            ->get();
 
-    return view('livewire.crearalquiler', [
-        'habitaciones'      => $this->habitaciones,
-        'alquileresActivos' => $activos,
-        'turnoActivo'       => $this->turnoActivo(),
-        'tiempoTurno'       => $this->getTiempoTurno(),
-    ])
-        ->extends('adminlte::page')
-        ->section('content');
-}
+        $activos = Alquiler::query()
+            ->select([
+                'id',
+                'habitacion_id',
+                'entrada',
+                'created_at',
+                'estado',
+                'inventario_detalle',
+                'tarifa_seleccionada',
+            ])
+            ->where('estado', 'alquilado')
+            ->orderBy('entrada', 'desc')
+            ->get()
+            ->keyBy('habitacion_id');
 
+        $inventarioIds = $activos
+            ->flatMap(function ($alquiler) {
+                $detalle = json_decode($alquiler->inventario_detalle, true) ?? [];
+
+                return collect($detalle)
+                    ->map(function ($item, $key) {
+                        if (!is_array($item)) {
+                            return null;
+                        }
+
+                        return $item['id'] ?? (is_numeric($key) ? (int)$key : null);
+                    })
+                    ->filter();
+            })
+            ->unique()
+            ->values();
+
+        $preciosInventario = $inventarioIds->isEmpty()
+            ? []
+            : Inventario::whereIn('id', $inventarioIds)->pluck('precio', 'id')->all();
+
+        $totalesActuales = [];
+        foreach ($habitaciones as $habitacion) {
+            $alquiler = $activos->get($habitacion->id);
+
+            if ($alquiler) {
+                $totalesActuales[$habitacion->id] = $this->getTotalActual($alquiler, $habitacion, $preciosInventario);
+            }
+        }
+
+        return view('livewire.crearalquiler', [
+            'habitaciones'      => $habitaciones,
+            'alquileresActivos' => $activos,
+            'totalesActuales'   => $totalesActuales,
+            'turnoActivo'       => $this->turnoActivo(),
+            'tiempoTurno'       => $this->getTiempoTurno(),
+        ])
+            ->extends('adminlte::page')
+            ->section('content');
+    }
 }

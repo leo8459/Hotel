@@ -328,7 +328,7 @@ class Pagaralquiler extends Component
             'fechaPago'
         ));
 
-        $correoDestino = env('MAIL_RECEIVER', 'joseaguilar987654321@gmail.com');
+        $correoDestino = env('MAIL_RECEIVER', config('mail.from.address'));
         Mail::to($correoDestino)->send(new BoletaAlquiler($alquiler, $pdf->output()));
     });
 

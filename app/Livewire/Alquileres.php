@@ -49,6 +49,21 @@ class Alquileres extends Component
             ->orderBy('entrada', 'desc')
             ->paginate($this->perPage);
 
+        $inventarioIds = $alquileres->getCollection()
+            ->flatMap(function ($alquiler) {
+                $detalles = json_decode($alquiler->inventario_detalle, true) ?? [];
+
+                return collect($detalles)
+                    ->pluck('id')
+                    ->filter();
+            })
+            ->unique()
+            ->values();
+
+        $preciosInventario = $inventarioIds->isEmpty()
+            ? collect()
+            : Inventario::whereIn('id', $inventarioIds)->pluck('precio', 'id');
+
         foreach ($alquileres as $alquiler) {
             // 1) Tiempo transcurrido
             $alquiler->tiempo_transcurrido = $this->getTiempoTranscurrido(
@@ -59,16 +74,16 @@ class Alquileres extends Component
             // 2) Calculamos el total de inventario para este alquiler
             $alquiler->total_inventario = 0;
             $detalles = json_decode($alquiler->inventario_detalle, true) ?? [];
-           foreach ($detalles as $item) {
-    if (!isset($item['id'], $item['cantidad'])) {
-        continue; // Evita el error si faltan datos
-    }
+            foreach ($detalles as $item) {
+                if (!isset($item['id'], $item['cantidad'])) {
+                    continue;
+                }
 
-    $inv = Inventario::find($item['id']);
-    if ($inv) {
-        $alquiler->total_inventario += $inv->precio * $item['cantidad'];
-    }
-}
+                $precio = $preciosInventario->get($item['id']);
+                if ($precio !== null) {
+                    $alquiler->total_inventario += $precio * $item['cantidad'];
+                }
+            }
 
 
             // 3) El costo de la habitación es el total global - el inventario
@@ -79,7 +94,10 @@ class Alquileres extends Component
             $query->where('estado', 'alquilado');
         })->get();
 
-        $this->inventarios = Inventario::where('stock', '>', 0)->get();
+        $this->inventarios = Inventario::where('stock', '>', 0)
+            ->select(['id', 'articulo', 'stock', 'precio'])
+            ->orderBy('articulo')
+            ->get();
 
         return view('livewire.alquileres', [
             'alquileres'    => $alquileres,

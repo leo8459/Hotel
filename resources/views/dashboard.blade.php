@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Dashboard')
+@section('title', 'HOTEL')
 
 @section('template_title')
-Sistema de EMS AGBC
+HOTEL
 @endsection
 
 @section('content')

@@ -14,9 +14,9 @@ return [
     |
     */
 
-    'title' => 'adminagbc',
+    'title' => 'HOTEL',
     'title_prefix' => '',
-    'title_postfix' => '| AGBC',
+    'title_postfix' => '| HOTEL',
 
     /*
     |--------------------------------------------------------------------------
@@ -63,12 +63,12 @@ return [
     |
     */
 
-    'logo' => '<b>Administrador</b>',
-    'logo_img' => 'vendor/adminlte/dist/img/LOGO.png',
+    'logo' => '<b>HOTEL</b>',
+    'logo_img' => null,
     'logo_img_class' => 'brand-image img-circle',
     'logo_img_xl' => null,
     'logo_img_xl_class' => 'brand-image-xs',
-    'logo_img_alt' => 'adminAGBC',
+    'logo_img_alt' => 'HOTEL',
 
     /*
     |--------------------------------------------------------------------------
@@ -86,8 +86,8 @@ return [
     'auth_logo' => [
         'enabled' => false,
         'img' => [
-            'path' => 'vendor/adminlte/dist/img/LOGO.png',
-            'alt' => 'Auth Logo',
+            'path' => null,
+            'alt' => 'HOTEL',
             'class' => '',
             'width' => 50,
             'height' => 50,
@@ -113,8 +113,8 @@ return [
         'enabled' => false,
         'mode' => 'fullscreen',
         'img' => [
-            'path' => 'vendor/adminlte/dist/img/LOGO.png',
-            'alt' => 'AdminLTE Preloader Image',
+            'path' => null,
+            'alt' => 'HOTEL',
             'effect' => 'animation__shake',
             'width' => 60,
             'height' => 60,
@@ -136,7 +136,7 @@ return [
     'usermenu_enabled' => true,
     'usermenu_header' => true,
     'usermenu_header_class' => 'bg-primary',
-    'usermenu_image' => true,
+    'usermenu_image' => false,
     'usermenu_desc' => true,
     'usermenu_profile_url' => true,
 

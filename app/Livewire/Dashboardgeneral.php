@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Alquiler;
 use App\Models\Habitacion;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -17,6 +18,22 @@ class Dashboardgeneral extends Component
         $this->selectedHabitacionId = $this->selectedHabitacionId === $habitacionId
             ? null
             : $habitacionId;
+    }
+
+    public function turnoActivo(): bool
+    {
+        $usuario = auth()->user();
+
+        if (!$usuario || !$usuario->hora_entrada_trabajo) {
+            return false;
+        }
+
+        if (!$usuario->hora_salida_trabajo) {
+            return true;
+        }
+
+        return Carbon::parse($usuario->hora_entrada_trabajo, 'America/La_Paz')
+            ->greaterThan(Carbon::parse($usuario->hora_salida_trabajo, 'America/La_Paz'));
     }
 
     public function cancelarAlquiler(int $alquilerId): void
@@ -122,7 +139,7 @@ class Dashboardgeneral extends Component
 
         $alquileresActivos = DB::table('alquiler')
             ->select(['id', 'habitacion_id', 'estado'])
-            ->whereIn('estado', ['alquilado', 'pagado'])
+            ->where('estado', 'alquilado')
             ->orderByDesc('entrada')
             ->get()
             ->keyBy('habitacion_id');
@@ -135,6 +152,7 @@ class Dashboardgeneral extends Component
             'sections' => $this->buildSections($habitaciones),
             'alquileresActivos' => $alquileresActivos,
             'totalGenerado' => $totalGenerado,
+            'turnoActivo' => $this->turnoActivo(),
         ]);
     }
 }

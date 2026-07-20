@@ -1,4 +1,4 @@
-<div wire:poll.1s>
+<div wire:poll.5s>
     <div class="container py-4">
         <h2 class="fw-bold mb-4 text-secondary">HABITACIONES</h2>
 
@@ -56,8 +56,8 @@
                     // ✅ entrada para timer
                     $entradaTimer = $alquiler?->entrada ?? $alquiler?->created_at;
 
-                    // ✅ total estimado
-                    $totalActual = $alquiler ? $this->getTotalActual($alquiler, $hab) : null;
+                    // ✅ total estimado precalculado en el componente
+                    $totalActual = $totalesActuales[$hab->id] ?? null;
                 @endphp
 
                 <div class="col-12 col-sm-6 col-lg-3">

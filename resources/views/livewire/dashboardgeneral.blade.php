@@ -185,44 +185,50 @@
 
                         @if ($selected)
                             <div class="action-panel">
-                                <a href="{{ route('habitacion.estado', $habitacion->id) }}"
-                                   class="btn btn-outline-primary btn-sm"
-                                   onclick="event.stopPropagation();">
-                                    Estado
-                                </a>
+                                @if (!$turnoActivo)
+                                    <button class="btn btn-secondary btn-sm" disabled>
+                                        Inicia tu turno
+                                    </button>
+                                @else
+                                    <a href="{{ route('habitacion.estado', $habitacion->id) }}"
+                                       class="btn btn-outline-primary btn-sm"
+                                       onclick="event.stopPropagation();">
+                                        Estado
+                                    </a>
 
-                                @if (!$bloqueado)
+                                    @if (!$bloqueado)
                                     <a href="{{ route('alquiler.crear', $habitacion->id) }}"
                                        class="btn btn-success btn-sm"
                                        onclick="event.stopPropagation();">
                                         Alquilar
                                     </a>
-                                @else
-                                    <button class="btn btn-secondary btn-sm" disabled>
-                                        No disponible
-                                    </button>
-                                @endif
+                                    @else
+                                        <button class="btn btn-secondary btn-sm" disabled>
+                                            No disponible
+                                        </button>
+                                    @endif
 
-                                @if ($alquiler)
-                                    <a href="{{ route('editar-alquiler', $alquiler->id) }}"
-                                       class="btn btn-warning btn-sm"
-                                       onclick="event.stopPropagation();">
-                                        Anadir producto
-                                    </a>
+                                    @if ($alquiler)
+                                        <a href="{{ route('editar-alquiler', $alquiler->id) }}"
+                                           class="btn btn-warning btn-sm"
+                                           onclick="event.stopPropagation();">
+                                            Anadir producto
+                                        </a>
 
-                                    <a href="{{ route('pagar-alquiler', $alquiler->id) }}"
-                                       class="btn btn-success btn-sm"
-                                       onclick="event.stopPropagation();">
-                                        Pagar alquiler
-                                    </a>
-                                @endif
+                                        <a href="{{ route('pagar-alquiler', $alquiler->id) }}"
+                                           class="btn btn-success btn-sm"
+                                           onclick="event.stopPropagation();">
+                                            Pagar alquiler
+                                        </a>
+                                    @endif
 
-                                @if ($alquiler && $habitacion->estado_texto === 'En uso')
-                                    <button type="button"
-                                            class="btn btn-danger btn-sm"
-                                            wire:click.stop="cancelarAlquiler({{ $alquiler->id }})">
-                                        Cancelar alquiler
-                                    </button>
+                                    @if ($alquiler && $habitacion->estado_texto === 'En uso')
+                                        <button type="button"
+                                                class="btn btn-danger btn-sm"
+                                                wire:click.stop="cancelarAlquiler({{ $alquiler->id }})">
+                                            Cancelar alquiler
+                                        </button>
+                                    @endif
                                 @endif
                             </div>
                         @endif
