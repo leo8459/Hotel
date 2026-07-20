@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Roboto', sans-serif;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: url('/images/LOGO.png') no-repeat center center fixed;
             background-size: cover;
         }
@@ -147,7 +145,7 @@
                     <span class="toggle-password" onclick="togglePasswordVisibility()">👁️</span>
                 </div>
                 <!-- <div class="g-recaptcha" data-sitekey="6Leg8LEqAAAAAIl35EcAbLmLidB3fDsrzgTQv-Fl"></div> -->
-                <button type="submit">INGRESAR</button>
+                <button type="submit" id="loginButton">INGRESAR</button>
             </form>
         </div>
     </div>
@@ -164,6 +162,12 @@
             toggleIcon.textContent = '👁️'; // Cambia al icono de mostrar
         }
     }
+
+    document.getElementById('loginForm').addEventListener('submit', function () {
+        const button = document.getElementById('loginButton');
+        button.disabled = true;
+        button.textContent = 'INGRESANDO...';
+    });
         // const loginForm = document.getElementById('loginForm');
         // loginForm.addEventListener('submit', function(event) {
         //     const recaptchaResponse = document.querySelector('.g-recaptcha-response').value;
